@@ -1,43 +1,67 @@
 #!/bin/bash
 me=pipeasio-register
-# exit if any command fails (commented so project-specific errors can be shown via echo)
-# set -e
 
-# read WINEPREFIX from environment, with fallback if unset
 WINEPREFIX=${WINEPREFIX:=~/.wine}
 
-# make sure the WINEPREFIX directory exists
 if [ ! -d "${WINEPREFIX}" ]; then
     wineboot -u || exit $?
 fi
 
-# Candidate install locations for the 64-bit PipeASIO ELF .so half.
-# We mirror the directory pattern Wine looks at; for each, the matching
-# Windows-side PE fake DLL must also exist before we register.
+# Candidate Wine "prefix" roots where both halves of PipeASIO may live:
+#   <root>/x86_64-windows/pipeasio64.dll       (PE fake)
+#   <root>/x86_64-unix/pipeasio64.dll.so       (ELF)
+#
+# Order matters: PIPEASIO_PREFIX (explicit) > user-local > distro > legacy.
+# User-local first so a non-root `cmake --install --prefix $HOME/.local`
+# is picked over an older system-wide install.
 candidates=(
-"/opt/wine-devel/lib64/wine/x86_64-unix/pipeasio64.dll.so"
-"/opt/wine-stable/lib64/wine/x86_64-unix/pipeasio64.dll.so"
-"/opt/wine-staging/lib64/wine/x86_64-unix/pipeasio64.dll.so"
-"/usr/lib/wine/x86_64-unix/pipeasio64.dll.so"
-"/usr/lib64/wine/x86_64-unix/pipeasio64.dll.so"
-"/usr/lib/x86_64-linux-gnu/wine/x86_64-unix/pipeasio64.dll.so"
+    "${PIPEASIO_PREFIX:+${PIPEASIO_PREFIX}/lib/wine}"
+    "${HOME}/.local/lib/wine"
+    "/usr/lib/wine"
+    "/usr/lib64/wine"
+    "/usr/lib/x86_64-linux-gnu/wine"
+    "/opt/wine-devel/lib64/wine"
+    "/opt/wine-stable/lib64/wine"
+    "/opt/wine-staging/lib64/wine"
 )
 
-status="not found"
-code=0
-for u in ${candidates[@]}; do
-    w=$(echo ${u} | sed -e 's|/x86_64-unix/pipeasio64.dll.so|/x86_64-windows/pipeasio64.dll|g')
-    if [ -e "${u}" ] && [ -e "${w}" ]; then
-        cp -v "${w}" "${WINEPREFIX}/drive_c/windows/system32"
-        wine regsvr32 "${u}"
-        code=$?
-        if [ $code -eq 0 ]; then
-            status="registered"
-        else
-            status="registration failed"
-        fi
+prefix=""
+for p in "${candidates[@]}"; do
+    [ -z "${p}" ] && continue
+    if [ -e "${p}/x86_64-unix/pipeasio64.dll.so" ] \
+       && [ -e "${p}/x86_64-windows/pipeasio64.dll" ]; then
+        prefix="${p}"
         break
     fi
 done
->&2 echo "[$me] 64-bit dll.so $status"
-exit $code
+
+if [ -z "${prefix}" ]; then
+    >&2 echo "[${me}] PipeASIO install not found in any candidate root."
+    >&2 echo "[${me}] Searched: ${candidates[*]}"
+    >&2 echo "[${me}] Set PIPEASIO_PREFIX=<install-prefix> or run 'cmake --install'."
+    exit 1
+fi
+
+>&2 echo "[${me}] using PipeASIO install at ${prefix}"
+
+# Stage the PE fake into the prefix's system32 so COM registration's
+# LoadLibrary resolves pipeasio64.dll by name.
+cp -v "${prefix}/x86_64-windows/pipeasio64.dll" \
+      "${WINEPREFIX}/drive_c/windows/system32/" || exit $?
+
+# WINEDLLPATH lets Wine (host wine for this registration; Proton's wine at
+# runtime — both need it for user-local installs) find the ELF .so half
+# next to its PE companion. Prepend, don't replace.
+export WINEDLLPATH="${prefix}${WINEDLLPATH:+:${WINEDLLPATH}}"
+wine regsvr32 pipeasio64.dll
+code=$?
+
+if [ ${code} -eq 0 ]; then
+    >&2 echo "[${me}] registered in ${WINEPREFIX}"
+    if [ "${prefix#${HOME}/}" != "${prefix}" ]; then
+        >&2 echo "[${me}] for Proton/Faugus, set WINEDLLPATH=${prefix} in the launcher env."
+    fi
+else
+    >&2 echo "[${me}] regsvr32 failed (status ${code})"
+fi
+exit ${code}

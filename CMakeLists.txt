@@ -38,3 +38,9 @@ include(GNUInstallDirs)
 
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/pipeasio-register
         DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# Test rig: standalone Wine probe host (built when BUILD_TESTS=ON).
+option(BUILD_TESTS "Build the asio_probe Wine host for fast iteration" ON)
+if(BUILD_TESTS)
+    add_subdirectory(tests/asio_probe)
+endif()

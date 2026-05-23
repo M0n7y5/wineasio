@@ -32,13 +32,25 @@
 #include <sys/mman.h>
 #include <pthread.h>
 
-#ifdef DEBUG
+/* Always include wine/debug.h for helpers like debugstr_guid; then
+ * unconditionally override TRACE/WARN/ERR to go through raw
+ * write(STDERR_FILENO,…) — bypasses Wine's WINEDEBUG channel gating,
+ * msvcrt FILE* routing, and stdio buffers that get discarded on
+ * abnormal exit. Applies in every build flavor. */
 #include "wine/debug.h"
-#else
-#define TRACE(...) {}
-#define WARN(fmt, ...) {} fprintf(stdout, "[pipeasio] " fmt, ##__VA_ARGS__)
-#define ERR(fmt, ...) {} fprintf(stderr, "[pipeasio] " fmt, ##__VA_ARGS__)
-#endif
+#undef  TRACE
+#undef  WARN
+#undef  ERR
+#define PIPEASIO_LOG(pfx, fmt, ...) do {                                       \
+    char _buf[1024];                                                           \
+    int  _n = snprintf(_buf, sizeof _buf, pfx fmt, ##__VA_ARGS__);             \
+    if (_n > 0)                                                                \
+        (void)write(STDERR_FILENO, _buf,                                       \
+                    (size_t)_n < sizeof _buf ? (size_t)_n : sizeof _buf - 1);  \
+} while (0)
+#define TRACE(fmt, ...) PIPEASIO_LOG("[pipeasio] ",       fmt, ##__VA_ARGS__)
+#define WARN(fmt, ...)  PIPEASIO_LOG("[pipeasio] WARN: ", fmt, ##__VA_ARGS__)
+#define ERR(fmt, ...)   PIPEASIO_LOG("[pipeasio] ERR: ",  fmt, ##__VA_ARGS__)
 
 #include <objbase.h>
 #include <mmsystem.h>
@@ -358,7 +370,7 @@ HIDDEN HRESULT STDMETHODCALLTYPE QueryInterface(LPPIPEASIO iface, REFIID riid, v
 {
     IPipeASIOImpl   *This = (IPipeASIOImpl *)iface;
 
-    TRACE("iface: %p, riid: %s, ppvObject: %p)\n", iface, debugstr_guid(riid), ppvObject);
+    TRACE("iface: %p, riid: %s, ppvObject: %p)\n", iface, wine_dbgstr_guid(riid), ppvObject);
 
     if (ppvObject == NULL)
         return E_INVALIDARG;

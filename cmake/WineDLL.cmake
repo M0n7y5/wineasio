@@ -70,7 +70,21 @@ function(add_wine_dll)
         -Werror=implicit-function-declaration
         $<$<CONFIG:Release>:-O2 -DNDEBUG -fvisibility=hidden>
         $<$<CONFIG:RelWithDebInfo>:-O2 -g -DNDEBUG -fvisibility=hidden>
-        $<$<CONFIG:Debug>:-O0 -g -DDEBUG -D__WINESRC__>)
+        $<$<CONFIG:Debug>:-O0 -g3 -DDEBUG -fno-omit-frame-pointer>)
+
+    # Debug builds always get -O0 -g3 (from the CONFIG:Debug block above).
+    # AddressSanitizer is opt-in via PIPEASIO_ASAN=ON because Wine's
+    # dynamic loader can't reliably make libasan first in the library
+    # list, which makes the runtime refuse to start. When enabled,
+    # winegcc filters -fsanitize from its gcc link invocation, so we
+    # request the libraries explicitly with -lasan/-lubsan.
+    set(_winegcc_extra_flags "")
+    option(PIPEASIO_ASAN "Build .so half with -fsanitize=address,undefined" OFF)
+    if(PIPEASIO_ASAN)
+        target_compile_options(${_objlib} PRIVATE
+            -fsanitize=address -fsanitize=undefined)
+        list(APPEND _winegcc_extra_flags -lasan -lubsan)
+    endif()
 
     set(_pe "${CMAKE_BINARY_DIR}/${WDL_NAME}.dll")
     set(_so "${CMAKE_BINARY_DIR}/${WDL_NAME}.dll.so")
@@ -97,6 +111,7 @@ function(add_wine_dll)
         COMMAND ${WINEGCC} -shared
                 ${WDL_SPEC}
                 $<TARGET_OBJECTS:${_objlib}>
+                ${_winegcc_extra_flags}
                 ${_lflags}
                 -o ${_so}
         DEPENDS ${_objlib} ${WDL_SPEC} $<TARGET_OBJECTS:${_objlib}>

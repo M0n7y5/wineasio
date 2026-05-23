@@ -33,20 +33,26 @@ cmake --build build-debug
 
 ### INSTALLING
 
-Default install prefix is `/usr/local`; pass `--prefix /usr` to match the
-distro layout most ASIO hosts expect.
+System-wide (matches the distro Wine layout most ASIO hosts use):
 
 ```sh
 sudo cmake --install build --prefix /usr
 ```
 
-This lays down:
+User-local (no `sudo`, sandboxed under `$HOME` — required for Proton /
+Faugus / Steam, see below):
+
+```sh
+cmake --install build --prefix "$HOME/.local"
+```
+
+Either lays down:
 
 ```
-/usr/lib/wine/x86_64-windows/pipeasio64.dll
-/usr/lib/wine/x86_64-windows/pipeasio.dll        -> pipeasio64.dll
-/usr/lib/wine/x86_64-unix/pipeasio64.dll.so
-/usr/lib/wine/x86_64-unix/pipeasio.dll.so        -> pipeasio64.dll.so
+<prefix>/lib/wine/x86_64-windows/pipeasio64.dll
+<prefix>/lib/wine/x86_64-windows/pipeasio.dll    -> pipeasio64.dll
+<prefix>/lib/wine/x86_64-unix/pipeasio64.dll.so
+<prefix>/lib/wine/x86_64-unix/pipeasio.dll.so    -> pipeasio64.dll.so
 ```
 
 The `pipeasio.dll{,.so}` symlinks satisfy the unified PE name that Wine 10+
@@ -86,8 +92,53 @@ The `pipeasio-register` script will register the PipeASIO driver in the default 
 You can specify another prefix like so:
 
 ```sh
-env WINEPREFIX=~/asioapp pipeasio-register
+env WINEPREFIX="$HOME/asioapp" pipeasio-register
 ```
+
+`pipeasio-register` searches for the install root in this order:
+`$PIPEASIO_PREFIX/lib/wine` → `$HOME/.local/lib/wine` → `/usr/lib/wine`
+→ distro variants → `/opt/wine-{devel,stable,staging}`. Set
+`PIPEASIO_PREFIX` to point it at a non-standard prefix.
+
+#### PROTON / STEAM / FAUGUS
+
+Proton runs Wine inside a pressure-vessel container (steamrt4). The
+container does **not** expose the host's `/usr/lib/wine/`, so a
+system-wide install is invisible to Proton's Wine. Two things make
+PipeASIO work inside Proton:
+
+1. Install PipeASIO under `$HOME` (pressure-vessel exposes the user's
+   home directory by default):
+
+   ```sh
+   cmake --install build --prefix "$HOME/.local"
+   ```
+
+2. Set `WINEDLLPATH=$HOME/.local/lib/wine` in the launcher's per-game
+   environment so Proton's Wine finds the ELF `.so` half. Proton has
+   honored a host-provided `WINEDLLPATH` since
+   [PR #9420](https://github.com/ValveSoftware/Proton/pull/9420);
+   Proton-CachyOS ships this fix.
+
+   In **Faugus-launcher**, put it in the per-game "Launch options"
+   environment field:
+
+   ```
+   WINEDLLPATH=/home/<you>/.local/lib/wine
+   ```
+
+   (Use the absolute path — Faugus doesn't expand `~` or `$HOME` in
+   that field.)
+
+Then register PipeASIO in the Proton wineprefix as usual:
+
+```sh
+env WINEPREFIX="$HOME/Faugus/<game>" pipeasio-register
+```
+
+The PE stub lands in `<prefix>/drive_c/windows/system32/` and the
+CLSID registration persists in the wineprefix's registry, both shared
+across Wine versions.
 
 ### GENERAL INFORMATION
 
