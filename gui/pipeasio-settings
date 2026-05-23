@@ -7,4 +7,4 @@ else
 fi
 
 PREFIX="X-PREFIX-X"
-exec ${PYTHON} ${PREFIX}/share/wineasio/settings.py "$@"
+exec ${PYTHON} ${PREFIX}/share/pipeasio/settings.py "$@"

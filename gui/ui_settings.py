@@ -119,22 +119,22 @@ class Ui_PipeASIOSettings(object):
         _tr = QCoreApplication.translate
         PipeASIOSettings.setWindowTitle(_tr(self.OBJECT_NAME, "PipeASIO Settings"))
         self.group_ports.setTitle(_tr(self.OBJECT_NAME, "Audio Ports"))
-        self.label_ports_in.setToolTip(_tr(self.OBJECT_NAME, "Number of jack ports that wineasio will try to open.\n"
+        self.label_ports_in.setToolTip(_tr(self.OBJECT_NAME, "Number of audio ports that PipeASIO will try to open.\n"
 "Default is 16"))
         self.label_ports_in.setText(_tr(self.OBJECT_NAME, "Number of inputs:"))
-        self.sb_ports_in.setToolTip(_tr(self.OBJECT_NAME, "Number of jack ports that wineasio will try to open.\n"
+        self.sb_ports_in.setToolTip(_tr(self.OBJECT_NAME, "Number of audio ports that PipeASIO will try to open.\n"
 "Default is 16"))
-        self.label_ports_out.setToolTip(_tr(self.OBJECT_NAME, "Number of jack ports that wineasio will try to open.\n"
+        self.label_ports_out.setToolTip(_tr(self.OBJECT_NAME, "Number of audio ports that PipeASIO will try to open.\n"
 "Default is 16"))
         self.label_ports_out.setText(_tr(self.OBJECT_NAME, "Number of outputs:"))
-        self.sb_ports_out.setToolTip(_tr(self.OBJECT_NAME, "Number of jack ports that wineasio will try to open.\n"
+        self.sb_ports_out.setToolTip(_tr(self.OBJECT_NAME, "Number of audio ports that PipeASIO will try to open.\n"
 "Default is 16"))
         self.cb_ports_connect_hw.setToolTip(_tr(self.OBJECT_NAME, "Try to connect the asio channels to the\n"
 "physical I/O ports on your hardware.\n"
 "Default is on"))
         self.cb_ports_connect_hw.setText(_tr(self.OBJECT_NAME, "Connect to hardware"))
         self.group_jack.setTitle(_tr(self.OBJECT_NAME, "JACK Options"))
-        self.cb_jack_autostart.setToolTip(_tr(self.OBJECT_NAME, "Enable wineasio to launch the jack server.\n"
+        self.cb_jack_autostart.setToolTip(_tr(self.OBJECT_NAME, "Honored as a no-op under PipeWire (the daemon is always running).\n"
 "Default is off"))
         self.cb_jack_autostart.setText(_tr(self.OBJECT_NAME, "Autostart server"))
         self.cb_jack_fixed_bsize.setToolTip(_tr(self.OBJECT_NAME, "When on: ASIO applications will respect the current JACK buffer size\n"

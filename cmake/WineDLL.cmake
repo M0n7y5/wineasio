@@ -2,8 +2,8 @@
 #
 # Usage:
 #   add_wine_dll(
-#       NAME      wineasio64
-#       SPEC      ${CMAKE_SOURCE_DIR}/wineasio.dll.spec
+#       NAME      pipeasio64
+#       SPEC      ${CMAKE_SOURCE_DIR}/pipeasio.dll.spec
 #       SOURCES   src/foo.c src/bar.c
 #       INCLUDES  ${CMAKE_SOURCE_DIR}/include
 #       LIBS      odbc32 ole32 uuid winmm
@@ -14,8 +14,8 @@
 #   ${CMAKE_BINARY_DIR}/${NAME}.dll.so    (ELF shared object, via winegcc)
 #
 # Install layout (under CMAKE_INSTALL_PREFIX):
-#   lib/wine/x86_64-windows/${NAME}.dll  + wineasio.dll  symlink
-#   lib/wine/x86_64-unix/${NAME}.dll.so  + wineasio.dll.so  symlink
+#   lib/wine/x86_64-windows/${NAME}.dll  + pipeasio.dll  symlink
+#   lib/wine/x86_64-unix/${NAME}.dll.so  + pipeasio.dll.so  symlink
 
 find_program(WINEBUILD winebuild REQUIRED)
 find_program(WINEGCC   winegcc   REQUIRED)
@@ -107,7 +107,7 @@ function(add_wine_dll)
     add_custom_target(${WDL_NAME} ALL DEPENDS ${_pe} ${_so})
 
     # Install into the Wine arch layout, plus the unified-name symlinks that
-    # Wine 10+ looks up (see reserach/wineasio-fl-studio-fix.md).
+    # Wine 10+ looks up.
     install(FILES ${_pe}
             DESTINATION lib/wine/x86_64-windows)
     install(FILES ${_so}
@@ -117,9 +117,9 @@ function(add_wine_dll)
                         WORLD_READ WORLD_EXECUTE)
     install(CODE "
         file(CREATE_LINK ${WDL_NAME}.dll
-             \${CMAKE_INSTALL_PREFIX}/lib/wine/x86_64-windows/wineasio.dll
+             \${CMAKE_INSTALL_PREFIX}/lib/wine/x86_64-windows/pipeasio.dll
              SYMBOLIC)
         file(CREATE_LINK ${WDL_NAME}.dll.so
-             \${CMAKE_INSTALL_PREFIX}/lib/wine/x86_64-unix/wineasio.dll.so
+             \${CMAKE_INSTALL_PREFIX}/lib/wine/x86_64-unix/pipeasio.dll.so
              SYMBOLIC)")
 endfunction()

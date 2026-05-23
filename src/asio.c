@@ -36,8 +36,8 @@
 #include "wine/debug.h"
 #else
 #define TRACE(...) {}
-#define WARN(fmt, ...) {} fprintf(stdout, "[wineasio] " fmt, ##__VA_ARGS__)
-#define ERR(fmt, ...) {} fprintf(stderr, "[wineasio] " fmt, ##__VA_ARGS__)
+#define WARN(fmt, ...) {} fprintf(stdout, "[pipeasio] " fmt, ##__VA_ARGS__)
+#define ERR(fmt, ...) {} fprintf(stderr, "[pipeasio] " fmt, ##__VA_ARGS__)
 #endif
 
 #include <objbase.h>
@@ -54,10 +54,10 @@ WINE_DEFAULT_DEBUG_CHANNEL(asio);
 #endif
 
 #define MAX_ENVIRONMENT_SIZE            6
-#define WINEASIO_MAX_NAME_LENGTH        32
-#define WINEASIO_MINIMUM_BUFFERSIZE     16
-#define WINEASIO_MAXIMUM_BUFFERSIZE     8192
-#define WINEASIO_PREFERRED_BUFFERSIZE   1024
+#define PIPEASIO_MAX_NAME_LENGTH        32
+#define PIPEASIO_MINIMUM_BUFFERSIZE     16
+#define PIPEASIO_MAXIMUM_BUFFERSIZE     8192
+#define PIPEASIO_PREFERRED_BUFFERSIZE   1024
 
 /* ASIO drivers (breaking the COM specification) use the Microsoft variety of
  * thiscall calling convention which gcc is unable to produce.  These macros
@@ -97,9 +97,9 @@ WINE_DEFAULT_DEBUG_CHANNEL(asio);
 #define HIDDEN __attribute__ ((visibility("hidden")))
 
 #ifdef _WIN64
-#define WINEASIO_CALLBACK CALLBACK
+#define PIPEASIO_CALLBACK CALLBACK
 #else
-#define WINEASIO_CALLBACK
+#define PIPEASIO_CALLBACK
 #endif
 
 typedef struct w_int64_t {
@@ -132,18 +132,18 @@ typedef struct TimeInformation
 
 typedef struct Callbacks
 {
-    void (WINEASIO_CALLBACK *swapBuffers) (LONG, LONG);
-    void (WINEASIO_CALLBACK *sampleRateChanged) (double);
-    LONG (WINEASIO_CALLBACK *sendNotification) (LONG, LONG, void*, double*);
-    void* (WINEASIO_CALLBACK *swapBuffersWithTimeInfo) (TimeInformation*, LONG, LONG);
+    void (PIPEASIO_CALLBACK *swapBuffers) (LONG, LONG);
+    void (PIPEASIO_CALLBACK *sampleRateChanged) (double);
+    LONG (PIPEASIO_CALLBACK *sendNotification) (LONG, LONG, void*, double*);
+    void* (PIPEASIO_CALLBACK *swapBuffersWithTimeInfo) (TimeInformation*, LONG, LONG);
 } Callbacks;
 
 /*****************************************************************************
  * IWineAsio interface
  */
 
-#define INTERFACE IWineASIO
-DECLARE_INTERFACE_(IWineASIO,IUnknown)
+#define INTERFACE IPipeASIO
+DECLARE_INTERFACE_(IPipeASIO,IUnknown)
 {
     STDMETHOD_(HRESULT, QueryInterface)         (THIS_ IID riid, void** ppvObject) PURE;
     STDMETHOD_(ULONG, AddRef)                   (THIS) PURE;
@@ -172,20 +172,20 @@ DECLARE_INTERFACE_(IWineASIO,IUnknown)
 };
 #undef INTERFACE
 
-typedef struct IWineASIO *LPWINEASIO;
+typedef struct IPipeASIO *LPPIPEASIO;
 
 typedef struct IOChannel
 {
     audio_sample_t *audio_buffer;
-    char                        port_name[WINEASIO_MAX_NAME_LENGTH];
+    char                        port_name[PIPEASIO_MAX_NAME_LENGTH];
     audio_port_t                 *port;
     bool                        active;
 } IOChannel;
 
-typedef struct IWineASIOImpl
+typedef struct IPipeASIOImpl
 {
     /* COM stuff */
-    const IWineASIOVtbl         *lpVtbl;
+    const IPipeASIOVtbl         *lpVtbl;
     LONG                        ref;
 
     /* The app's main window handle on windows, 0 on OS/X */
@@ -206,17 +206,17 @@ typedef struct IWineASIOImpl
     w_int64_t                   host_time_stamp;
     LONG                        host_version;
 
-    /* WineASIO configuration options */
-    int                         wineasio_number_inputs;
-    int                         wineasio_number_outputs;
-    BOOL                        wineasio_autostart_server;
-    BOOL                        wineasio_connect_to_hardware;
-    BOOL                        wineasio_fixed_buffersize;
-    LONG                        wineasio_preferred_buffersize;
+    /* PipeASIO configuration options */
+    int                         pipeasio_number_inputs;
+    int                         pipeasio_number_outputs;
+    BOOL                        pipeasio_autostart_server;
+    BOOL                        pipeasio_connect_to_hardware;
+    BOOL                        pipeasio_fixed_buffersize;
+    LONG                        pipeasio_preferred_buffersize;
 
     /* JACK stuff */
     audio_client_t               *jack_client;
-    char                        jack_client_name[WINEASIO_MAX_NAME_LENGTH];
+    char                        jack_client_name[PIPEASIO_MAX_NAME_LENGTH];
     int                         jack_num_input_ports;
     int                         jack_num_output_ports;
     const char                  **jack_input_ports;
@@ -226,7 +226,7 @@ typedef struct IWineASIOImpl
     audio_sample_t *callback_audio_buffer;
     IOChannel                   *input_channel;
     IOChannel                   *output_channel;
-} IWineASIOImpl;
+} IPipeASIOImpl;
 
 enum { Loaded, Initialized, Prepared, Running };
 
@@ -235,33 +235,33 @@ enum { Loaded, Initialized, Prepared, Running };
  */
 
 /*
- *  as seen from the WineASIO source
+ *  as seen from the PipeASIO source
  */
 
-HIDDEN HRESULT STDMETHODCALLTYPE      QueryInterface(LPWINEASIO iface, REFIID riid, void **ppvObject);
-HIDDEN ULONG   STDMETHODCALLTYPE      AddRef(LPWINEASIO iface);
-HIDDEN ULONG   STDMETHODCALLTYPE      Release(LPWINEASIO iface);
-HIDDEN LONG    STDMETHODCALLTYPE      Init(LPWINEASIO iface, void *sysRef);
-HIDDEN void    STDMETHODCALLTYPE      GetDriverName(LPWINEASIO iface, char *name);
-HIDDEN LONG    STDMETHODCALLTYPE      GetDriverVersion(LPWINEASIO iface);
-HIDDEN void    STDMETHODCALLTYPE      GetErrorMessage(LPWINEASIO iface, char *string);
-HIDDEN LONG    STDMETHODCALLTYPE      Start(LPWINEASIO iface);
-HIDDEN LONG    STDMETHODCALLTYPE      Stop(LPWINEASIO iface);
-HIDDEN LONG    STDMETHODCALLTYPE      GetChannels (LPWINEASIO iface, LONG *numInputChannels, LONG *numOutputChannels);
-HIDDEN LONG    STDMETHODCALLTYPE      GetLatencies(LPWINEASIO iface, LONG *inputLatency, LONG *outputLatency);
-HIDDEN LONG    STDMETHODCALLTYPE      GetBufferSize(LPWINEASIO iface, LONG *minSize, LONG *maxSize, LONG *preferredSize, LONG *granularity);
-HIDDEN LONG    STDMETHODCALLTYPE      CanSampleRate(LPWINEASIO iface, double sampleRate);
-HIDDEN LONG    STDMETHODCALLTYPE      GetSampleRate(LPWINEASIO iface, double *sampleRate);
-HIDDEN LONG    STDMETHODCALLTYPE      SetSampleRate(LPWINEASIO iface, double sampleRate);
-HIDDEN LONG    STDMETHODCALLTYPE      GetClockSources(LPWINEASIO iface, void *clocks, LONG *numSources);
-HIDDEN LONG    STDMETHODCALLTYPE      SetClockSource(LPWINEASIO iface, LONG index);
-HIDDEN LONG    STDMETHODCALLTYPE      GetSamplePosition(LPWINEASIO iface, w_int64_t *sPos, w_int64_t *tStamp);
-HIDDEN LONG    STDMETHODCALLTYPE      GetChannelInfo(LPWINEASIO iface, void *info);
-HIDDEN LONG    STDMETHODCALLTYPE      CreateBuffers(LPWINEASIO iface, BufferInformation *bufferInfo, LONG numChannels, LONG bufferSize, Callbacks *callbacks);
-HIDDEN LONG    STDMETHODCALLTYPE      DisposeBuffers(LPWINEASIO iface);
-HIDDEN LONG    STDMETHODCALLTYPE      ControlPanel(LPWINEASIO iface);
-HIDDEN LONG    STDMETHODCALLTYPE      Future(LPWINEASIO iface, LONG selector, void *opt);
-HIDDEN LONG    STDMETHODCALLTYPE      OutputReady(LPWINEASIO iface);
+HIDDEN HRESULT STDMETHODCALLTYPE      QueryInterface(LPPIPEASIO iface, REFIID riid, void **ppvObject);
+HIDDEN ULONG   STDMETHODCALLTYPE      AddRef(LPPIPEASIO iface);
+HIDDEN ULONG   STDMETHODCALLTYPE      Release(LPPIPEASIO iface);
+HIDDEN LONG    STDMETHODCALLTYPE      Init(LPPIPEASIO iface, void *sysRef);
+HIDDEN void    STDMETHODCALLTYPE      GetDriverName(LPPIPEASIO iface, char *name);
+HIDDEN LONG    STDMETHODCALLTYPE      GetDriverVersion(LPPIPEASIO iface);
+HIDDEN void    STDMETHODCALLTYPE      GetErrorMessage(LPPIPEASIO iface, char *string);
+HIDDEN LONG    STDMETHODCALLTYPE      Start(LPPIPEASIO iface);
+HIDDEN LONG    STDMETHODCALLTYPE      Stop(LPPIPEASIO iface);
+HIDDEN LONG    STDMETHODCALLTYPE      GetChannels (LPPIPEASIO iface, LONG *numInputChannels, LONG *numOutputChannels);
+HIDDEN LONG    STDMETHODCALLTYPE      GetLatencies(LPPIPEASIO iface, LONG *inputLatency, LONG *outputLatency);
+HIDDEN LONG    STDMETHODCALLTYPE      GetBufferSize(LPPIPEASIO iface, LONG *minSize, LONG *maxSize, LONG *preferredSize, LONG *granularity);
+HIDDEN LONG    STDMETHODCALLTYPE      CanSampleRate(LPPIPEASIO iface, double sampleRate);
+HIDDEN LONG    STDMETHODCALLTYPE      GetSampleRate(LPPIPEASIO iface, double *sampleRate);
+HIDDEN LONG    STDMETHODCALLTYPE      SetSampleRate(LPPIPEASIO iface, double sampleRate);
+HIDDEN LONG    STDMETHODCALLTYPE      GetClockSources(LPPIPEASIO iface, void *clocks, LONG *numSources);
+HIDDEN LONG    STDMETHODCALLTYPE      SetClockSource(LPPIPEASIO iface, LONG index);
+HIDDEN LONG    STDMETHODCALLTYPE      GetSamplePosition(LPPIPEASIO iface, w_int64_t *sPos, w_int64_t *tStamp);
+HIDDEN LONG    STDMETHODCALLTYPE      GetChannelInfo(LPPIPEASIO iface, void *info);
+HIDDEN LONG    STDMETHODCALLTYPE      CreateBuffers(LPPIPEASIO iface, BufferInformation *bufferInfo, LONG numChannels, LONG bufferSize, Callbacks *callbacks);
+HIDDEN LONG    STDMETHODCALLTYPE      DisposeBuffers(LPPIPEASIO iface);
+HIDDEN LONG    STDMETHODCALLTYPE      ControlPanel(LPPIPEASIO iface);
+HIDDEN LONG    STDMETHODCALLTYPE      Future(LPPIPEASIO iface, LONG selector, void *opt);
+HIDDEN LONG    STDMETHODCALLTYPE      OutputReady(LPPIPEASIO iface);
 
 /*
  * thiscall wrappers for the vtbl (as seen from app side 32bit)
@@ -302,17 +302,17 @@ static inline int  jack_sample_rate_callback (audio_nframes_t nframes, void *arg
  *  Support functions
  */
 
-HRESULT WINAPI  WineASIOCreateInstance(REFIID riid, LPVOID *ppobj);
-static  VOID    configure_driver(IWineASIOImpl *This);
+HRESULT WINAPI  PipeASIOCreateInstance(REFIID riid, LPVOID *ppobj);
+static  VOID    configure_driver(IPipeASIOImpl *This);
 
 static DWORD WINAPI jack_thread_creator_helper(LPVOID arg);
 static int          jack_thread_creator(pthread_t* thread_id, const pthread_attr_t* attr, void *(*function)(void*), void* arg);
 
-/* {48D0C522-BFCC-45cc-8B84-17F25F33E6E8} */
-static GUID const CLSID_WineASIO = {
-0x48d0c522, 0xbfcc, 0x45cc, { 0x8b, 0x84, 0x17, 0xf2, 0x5f, 0x33, 0xe6, 0xe8 } };
+/* {2d3ca9e2-1193-4c5d-b5fd-38798f3dc074} */
+static GUID const CLSID_PipeASIO = {
+0x2d3ca9e2, 0x1193, 0x4c5d, { 0xb5, 0xfd, 0x38, 0x79, 0x8f, 0x3d, 0xc0, 0x74 } };
 
-static const IWineASIOVtbl WineASIO_Vtbl =
+static const IPipeASIOVtbl PipeASIO_Vtbl =
 {
     (void *) QueryInterface,
     (void *) AddRef,
@@ -354,16 +354,16 @@ struct {
  */
 
 
-HIDDEN HRESULT STDMETHODCALLTYPE QueryInterface(LPWINEASIO iface, REFIID riid, void **ppvObject)
+HIDDEN HRESULT STDMETHODCALLTYPE QueryInterface(LPPIPEASIO iface, REFIID riid, void **ppvObject)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl *)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl *)iface;
 
     TRACE("iface: %p, riid: %s, ppvObject: %p)\n", iface, debugstr_guid(riid), ppvObject);
 
     if (ppvObject == NULL)
         return E_INVALIDARG;
 
-    if (IsEqualIID(&CLSID_WineASIO, riid))
+    if (IsEqualIID(&CLSID_PipeASIO, riid))
     {
         AddRef(iface);
         *ppvObject = This;
@@ -374,14 +374,14 @@ HIDDEN HRESULT STDMETHODCALLTYPE QueryInterface(LPWINEASIO iface, REFIID riid, v
 }
 
 /*
- * ULONG STDMETHODCALLTYPE AddRef(LPWINEASIO iface);
+ * ULONG STDMETHODCALLTYPE AddRef(LPPIPEASIO iface);
  * Function: Increment the reference count on the object
  * Returns:  Ref count
  */
 
-HIDDEN ULONG STDMETHODCALLTYPE AddRef(LPWINEASIO iface)
+HIDDEN ULONG STDMETHODCALLTYPE AddRef(LPPIPEASIO iface)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl *)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl *)iface;
     ULONG           ref = InterlockedIncrement(&(This->ref));
 
     TRACE("iface: %p, ref count is %u\n", iface, (unsigned)ref);
@@ -389,15 +389,15 @@ HIDDEN ULONG STDMETHODCALLTYPE AddRef(LPWINEASIO iface)
 }
 
 /*
- * ULONG Release (LPWINEASIO iface);
+ * ULONG Release (LPPIPEASIO iface);
  *  Function:   Destroy the interface
  *  Returns:    Ref count
  *  Implies:    Stop() and DisposeBuffers()
  */
 
-HIDDEN ULONG STDMETHODCALLTYPE Release(LPWINEASIO iface)
+HIDDEN ULONG STDMETHODCALLTYPE Release(LPPIPEASIO iface)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl *)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl *)iface;
     ULONG            ref = InterlockedDecrement(&This->ref);
 
     TRACE("iface: %p, ref count is %u\n", iface, (unsigned)ref);
@@ -410,20 +410,20 @@ HIDDEN ULONG STDMETHODCALLTYPE Release(LPWINEASIO iface)
     if (This->host_driver_state == Initialized)
     {
         /* just for good measure we deinitialize IOChannel structures and unregister JACK ports */
-        for (int i = 0; i < This->wineasio_number_inputs; i++)
+        for (int i = 0; i < This->pipeasio_number_inputs; i++)
         {
             audio_port_unregister (This->jack_client, This->input_channel[i].port);
             This->input_channel[i].active = false;
             This->input_channel[i].port = NULL;
         }
-        for (int i = 0; i < This->wineasio_number_outputs; i++)
+        for (int i = 0; i < This->pipeasio_number_outputs; i++)
         {
             audio_port_unregister (This->jack_client, This->output_channel[i].port);
             This->output_channel[i].active = false;
             This->output_channel[i].port = NULL;
         }
         This->host_active_inputs = This->host_active_outputs = 0;
-        TRACE("%i IOChannel structures released\n", This->wineasio_number_inputs + This->wineasio_number_outputs);
+        TRACE("%i IOChannel structures released\n", This->pipeasio_number_inputs + This->pipeasio_number_outputs);
 
         audio_free (This->jack_output_ports);
         audio_free (This->jack_input_ports);
@@ -431,7 +431,7 @@ HIDDEN ULONG STDMETHODCALLTYPE Release(LPWINEASIO iface)
         if (This->input_channel)
             HeapFree(GetProcessHeap(), 0, This->input_channel);
     }
-    TRACE("WineASIO terminated\n\n");
+    TRACE("PipeASIO terminated\n\n");
     if (ref == 0)
         HeapFree(GetProcessHeap(), 0, This);
     return ref;
@@ -446,11 +446,11 @@ HIDDEN ULONG STDMETHODCALLTYPE Release(LPWINEASIO iface)
  */
 
 DEFINE_THISCALL_WRAPPER(Init,8)
-HIDDEN LONG STDMETHODCALLTYPE Init(LPWINEASIO iface, void *sysRef)
+HIDDEN LONG STDMETHODCALLTYPE Init(LPPIPEASIO iface, void *sysRef)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl *)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl *)iface;
     uint32_t   jack_status;
-    uint32_t  jack_options = This->wineasio_autostart_server ? AUDIO_NULL_OPTION : AUDIO_NO_START_SERVER;
+    uint32_t  jack_options = This->pipeasio_autostart_server ? AUDIO_NULL_OPTION : AUDIO_NO_START_SERVER;
     int             i;
 
     This->sys_ref = sysRef;
@@ -468,15 +468,15 @@ HIDDEN LONG STDMETHODCALLTYPE Init(LPWINEASIO iface, void *sysRef)
     This->host_current_buffersize = audio_get_buffer_size(This->jack_client);
 
     /* Allocate IOChannel structures */
-    This->input_channel = HeapAlloc(GetProcessHeap(), 0, (This->wineasio_number_inputs + This->wineasio_number_outputs) * sizeof(IOChannel));
+    This->input_channel = HeapAlloc(GetProcessHeap(), 0, (This->pipeasio_number_inputs + This->pipeasio_number_outputs) * sizeof(IOChannel));
     if (!This->input_channel)
     {
         audio_close(This->jack_client);
-        ERR("Unable to allocate IOChannel structures for %i channels\n", This->wineasio_number_inputs);
+        ERR("Unable to allocate IOChannel structures for %i channels\n", This->pipeasio_number_inputs);
         return 0;
     }
-    This->output_channel = This->input_channel + This->wineasio_number_inputs;
-    TRACE("%i IOChannel structures allocated\n", This->wineasio_number_inputs + This->wineasio_number_outputs);
+    This->output_channel = This->input_channel + This->pipeasio_number_inputs;
+    TRACE("%i IOChannel structures allocated\n", This->pipeasio_number_inputs + This->pipeasio_number_outputs);
 
     /* Get and count physical JACK ports */
     This->jack_input_ports = audio_get_ports(This->jack_client, NULL, NULL, AUDIO_PORT_IS_PHYSICAL | AUDIO_PORT_IS_OUTPUT);
@@ -487,25 +487,25 @@ HIDDEN LONG STDMETHODCALLTYPE Init(LPWINEASIO iface, void *sysRef)
         ;
 
     /* Initialize IOChannel structures */
-    for (i = 0; i < This->wineasio_number_inputs; i++)
+    for (i = 0; i < This->pipeasio_number_inputs; i++)
     {
         This->input_channel[i].active = false;
         This->input_channel[i].port = NULL;
-        snprintf(This->input_channel[i].port_name, WINEASIO_MAX_NAME_LENGTH, "in_%i", i + 1);
+        snprintf(This->input_channel[i].port_name, PIPEASIO_MAX_NAME_LENGTH, "in_%i", i + 1);
         This->input_channel[i].port = audio_port_register(This->jack_client,
             This->input_channel[i].port_name, AUDIO_DEFAULT_TYPE, AUDIO_PORT_IS_INPUT, i);
         /* TRACE("IOChannel structure initialized for input %d: '%s'\n", i, This->input_channel[i].port_name); */
     }
-    for (i = 0; i < This->wineasio_number_outputs; i++)
+    for (i = 0; i < This->pipeasio_number_outputs; i++)
     {
         This->output_channel[i].active = false;
         This->output_channel[i].port = NULL;
-        snprintf(This->output_channel[i].port_name, WINEASIO_MAX_NAME_LENGTH, "out_%i", i + 1);
+        snprintf(This->output_channel[i].port_name, PIPEASIO_MAX_NAME_LENGTH, "out_%i", i + 1);
         This->output_channel[i].port = audio_port_register(This->jack_client,
             This->output_channel[i].port_name, AUDIO_DEFAULT_TYPE, AUDIO_PORT_IS_OUTPUT, i);
         /* TRACE("IOChannel structure initialized for output %d: '%s'\n", i, This->output_channel[i].port_name); */
     }
-    TRACE("%i IOChannel structures initialized\n", This->wineasio_number_inputs + This->wineasio_number_outputs);
+    TRACE("%i IOChannel structures initialized\n", This->pipeasio_number_inputs + This->pipeasio_number_outputs);
 
     audio_set_thread_creator(jack_thread_creator);
 
@@ -542,7 +542,7 @@ HIDDEN LONG STDMETHODCALLTYPE Init(LPWINEASIO iface, void *sysRef)
     }
 
     This->host_driver_state = Initialized;
-    TRACE("WineASIO 0.%.1f initialized\n",(float) This->host_version / 10);
+    TRACE("PipeASIO 0.%.1f initialized\n",(float) This->host_version / 10);
     return 1;
 }
 
@@ -552,10 +552,10 @@ HIDDEN LONG STDMETHODCALLTYPE Init(LPWINEASIO iface, void *sysRef)
  */
 
 DEFINE_THISCALL_WRAPPER(GetDriverName,8)
-HIDDEN void STDMETHODCALLTYPE GetDriverName(LPWINEASIO iface, char *name)
+HIDDEN void STDMETHODCALLTYPE GetDriverName(LPPIPEASIO iface, char *name)
 {
     TRACE("iface: %p, name: %p\n", iface, name);
-    strcpy(name, "WineASIO");
+    strcpy(name, "PipeASIO");
     return;
 }
 
@@ -565,9 +565,9 @@ HIDDEN void STDMETHODCALLTYPE GetDriverName(LPWINEASIO iface, char *name)
  */
 
 DEFINE_THISCALL_WRAPPER(GetDriverVersion,4)
-HIDDEN LONG STDMETHODCALLTYPE GetDriverVersion(LPWINEASIO iface)
+HIDDEN LONG STDMETHODCALLTYPE GetDriverVersion(LPPIPEASIO iface)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
 
     TRACE("iface: %p\n", iface);
     return This->host_version;
@@ -579,10 +579,10 @@ HIDDEN LONG STDMETHODCALLTYPE GetDriverVersion(LPWINEASIO iface)
  */
 
 DEFINE_THISCALL_WRAPPER(GetErrorMessage,8)
-HIDDEN void STDMETHODCALLTYPE GetErrorMessage(LPWINEASIO iface, char *string)
+HIDDEN void STDMETHODCALLTYPE GetErrorMessage(LPPIPEASIO iface, char *string)
 {
     TRACE("iface: %p, string: %p)\n", iface, string);
-    strcpy(string, "WineASIO does not return error messages\n");
+    strcpy(string, "PipeASIO does not return error messages\n");
     return;
 }
 
@@ -594,9 +594,9 @@ HIDDEN void STDMETHODCALLTYPE GetErrorMessage(LPWINEASIO iface, char *string)
  */
 
 DEFINE_THISCALL_WRAPPER(Start,4)
-HIDDEN LONG STDMETHODCALLTYPE Start(LPWINEASIO iface)
+HIDDEN LONG STDMETHODCALLTYPE Start(LPPIPEASIO iface)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
     int             i;
     DWORD           time;
 
@@ -606,7 +606,7 @@ HIDDEN LONG STDMETHODCALLTYPE Start(LPWINEASIO iface)
         return -1000;
 
     /* Zero the audio buffer */
-    for (i = 0; i < (This->wineasio_number_inputs + This->wineasio_number_outputs) * 2 * This->host_current_buffersize; i++)
+    for (i = 0; i < (This->pipeasio_number_inputs + This->pipeasio_number_outputs) * 2 * This->host_current_buffersize; i++)
         This->callback_audio_buffer[i] = 0;
 
     /* prime the callback by preprocessing one outbound host bufffer */
@@ -643,7 +643,7 @@ HIDDEN LONG STDMETHODCALLTYPE Start(LPWINEASIO iface)
     This->host_buffer_index = This->host_buffer_index ? 0 : 1;
 
     This->host_driver_state = Running;
-    TRACE("WineASIO successfully loaded\n");
+    TRACE("PipeASIO successfully loaded\n");
     return 0;
 }
 
@@ -655,9 +655,9 @@ HIDDEN LONG STDMETHODCALLTYPE Start(LPWINEASIO iface)
  */
 
 DEFINE_THISCALL_WRAPPER(Stop,4)
-HIDDEN LONG STDMETHODCALLTYPE Stop(LPWINEASIO iface)
+HIDDEN LONG STDMETHODCALLTYPE Stop(LPPIPEASIO iface)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
 
     TRACE("iface: %p\n", iface);
 
@@ -677,16 +677,16 @@ HIDDEN LONG STDMETHODCALLTYPE Stop(LPWINEASIO iface)
  */
 
 DEFINE_THISCALL_WRAPPER(GetChannels,12)
-HIDDEN LONG STDMETHODCALLTYPE GetChannels (LPWINEASIO iface, LONG *numInputChannels, LONG *numOutputChannels)
+HIDDEN LONG STDMETHODCALLTYPE GetChannels (LPPIPEASIO iface, LONG *numInputChannels, LONG *numOutputChannels)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
 
     if (!numInputChannels || !numOutputChannels)
         return -998;
 
-    *numInputChannels = This->wineasio_number_inputs;
-    *numOutputChannels = This->wineasio_number_outputs;
-    TRACE("iface: %p, inputs: %i, outputs: %i\n", iface, This->wineasio_number_inputs, This->wineasio_number_outputs);
+    *numInputChannels = This->pipeasio_number_inputs;
+    *numOutputChannels = This->pipeasio_number_outputs;
+    TRACE("iface: %p, inputs: %i, outputs: %i\n", iface, This->pipeasio_number_inputs, This->pipeasio_number_outputs);
     return 0;
 }
 
@@ -697,9 +697,9 @@ HIDDEN LONG STDMETHODCALLTYPE GetChannels (LPWINEASIO iface, LONG *numInputChann
  */
 
 DEFINE_THISCALL_WRAPPER(GetLatencies,12)
-HIDDEN LONG STDMETHODCALLTYPE GetLatencies(LPWINEASIO iface, LONG *inputLatency, LONG *outputLatency)
+HIDDEN LONG STDMETHODCALLTYPE GetLatencies(LPPIPEASIO iface, LONG *inputLatency, LONG *outputLatency)
 {
-    IWineASIOImpl           *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl           *This = (IPipeASIOImpl*)iface;
     audio_latency_range_t    range;
 
     if (!inputLatency || !outputLatency)
@@ -725,16 +725,16 @@ HIDDEN LONG STDMETHODCALLTYPE GetLatencies(LPWINEASIO iface, LONG *inputLatency,
  */
 
 DEFINE_THISCALL_WRAPPER(GetBufferSize,20)
-HIDDEN LONG STDMETHODCALLTYPE GetBufferSize(LPWINEASIO iface, LONG *minSize, LONG *maxSize, LONG *preferredSize, LONG *granularity)
+HIDDEN LONG STDMETHODCALLTYPE GetBufferSize(LPPIPEASIO iface, LONG *minSize, LONG *maxSize, LONG *preferredSize, LONG *granularity)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
 
     TRACE("iface: %p, minSize: %p, maxSize: %p, preferredSize: %p, granularity: %p\n", iface, minSize, maxSize, preferredSize, granularity);
 
     if (!minSize || !maxSize || !preferredSize || !granularity)
         return -998;
 
-    if (This->wineasio_fixed_buffersize)
+    if (This->pipeasio_fixed_buffersize)
     {
         *minSize = *maxSize = *preferredSize = This->host_current_buffersize;
         *granularity = 0;
@@ -742,9 +742,9 @@ HIDDEN LONG STDMETHODCALLTYPE GetBufferSize(LPWINEASIO iface, LONG *minSize, LON
         return 0;
     }
 
-    *minSize = WINEASIO_MINIMUM_BUFFERSIZE;
-    *maxSize = WINEASIO_MAXIMUM_BUFFERSIZE;
-    *preferredSize = This->wineasio_preferred_buffersize;
+    *minSize = PIPEASIO_MINIMUM_BUFFERSIZE;
+    *maxSize = PIPEASIO_MAXIMUM_BUFFERSIZE;
+    *preferredSize = This->pipeasio_preferred_buffersize;
     *granularity = -1;
     TRACE("The host can control buffersize\nMinimum: %d, maximum: %d, preferred: %d, granularity: %d, current: %d\n",
           (int)*minSize, (int)*maxSize, (int)*preferredSize, (int)*granularity, (int)This->host_current_buffersize);
@@ -758,9 +758,9 @@ HIDDEN LONG STDMETHODCALLTYPE GetBufferSize(LPWINEASIO iface, LONG *minSize, LON
  */
 
 DEFINE_THISCALL_WRAPPER(CanSampleRate,12)
-HIDDEN LONG STDMETHODCALLTYPE CanSampleRate(LPWINEASIO iface, double sampleRate)
+HIDDEN LONG STDMETHODCALLTYPE CanSampleRate(LPPIPEASIO iface, double sampleRate)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
 
     TRACE("iface: %p, Samplerate = %li, requested samplerate = %li\n", iface, (long) This->host_sample_rate, (long) sampleRate);
 
@@ -777,9 +777,9 @@ HIDDEN LONG STDMETHODCALLTYPE CanSampleRate(LPWINEASIO iface, double sampleRate)
  */
 
 DEFINE_THISCALL_WRAPPER(GetSampleRate,8)
-HIDDEN LONG STDMETHODCALLTYPE GetSampleRate(LPWINEASIO iface, double *sampleRate)
+HIDDEN LONG STDMETHODCALLTYPE GetSampleRate(LPPIPEASIO iface, double *sampleRate)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
 
     TRACE("iface: %p, Sample rate is %i\n", iface, (int) This->host_sample_rate);
 
@@ -799,9 +799,9 @@ HIDDEN LONG STDMETHODCALLTYPE GetSampleRate(LPWINEASIO iface, double *sampleRate
  */
 
 DEFINE_THISCALL_WRAPPER(SetSampleRate,12)
-HIDDEN LONG STDMETHODCALLTYPE SetSampleRate(LPWINEASIO iface, double sampleRate)
+HIDDEN LONG STDMETHODCALLTYPE SetSampleRate(LPPIPEASIO iface, double sampleRate)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
 
     TRACE("iface: %p, Sample rate %f requested\n", iface, sampleRate);
 
@@ -820,7 +820,7 @@ HIDDEN LONG STDMETHODCALLTYPE SetSampleRate(LPWINEASIO iface, double sampleRate)
  */
 
 DEFINE_THISCALL_WRAPPER(GetClockSources,12)
-HIDDEN LONG STDMETHODCALLTYPE GetClockSources(LPWINEASIO iface, void *clocks, LONG *numSources)
+HIDDEN LONG STDMETHODCALLTYPE GetClockSources(LPPIPEASIO iface, void *clocks, LONG *numSources)
 {
     LONG *lclocks = (LONG*)clocks;
 
@@ -848,7 +848,7 @@ HIDDEN LONG STDMETHODCALLTYPE GetClockSources(LPWINEASIO iface, void *clocks, LO
  */
 
 DEFINE_THISCALL_WRAPPER(SetClockSource,8)
-HIDDEN LONG STDMETHODCALLTYPE SetClockSource(LPWINEASIO iface, LONG index)
+HIDDEN LONG STDMETHODCALLTYPE SetClockSource(LPPIPEASIO iface, LONG index)
 {
     TRACE("iface: %p, index: %d\n", iface, (int)index);
 
@@ -867,9 +867,9 @@ HIDDEN LONG STDMETHODCALLTYPE SetClockSource(LPWINEASIO iface, LONG index)
  */
 
 DEFINE_THISCALL_WRAPPER(GetSamplePosition,12)
-HIDDEN LONG STDMETHODCALLTYPE GetSamplePosition(LPWINEASIO iface, w_int64_t *sPos, w_int64_t *tStamp)
+HIDDEN LONG STDMETHODCALLTYPE GetSamplePosition(LPPIPEASIO iface, w_int64_t *sPos, w_int64_t *tStamp)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
 
     TRACE("iface: %p, sPos: %p, tStamp: %p\n", iface, sPos, tStamp);
 
@@ -891,9 +891,9 @@ HIDDEN LONG STDMETHODCALLTYPE GetSamplePosition(LPWINEASIO iface, w_int64_t *sPo
  */
 
 DEFINE_THISCALL_WRAPPER(GetChannelInfo,8)
-HIDDEN LONG STDMETHODCALLTYPE GetChannelInfo(LPWINEASIO iface, void *info)
+HIDDEN LONG STDMETHODCALLTYPE GetChannelInfo(LPPIPEASIO iface, void *info)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
     LONG *linfo = (LONG*)info;
 
     const LONG channelNumber = *linfo++;
@@ -901,13 +901,13 @@ HIDDEN LONG STDMETHODCALLTYPE GetChannelInfo(LPWINEASIO iface, void *info)
 
     /* TRACE("(iface: %p, info: %p\n", iface, info); */
 
-    if (channelNumber < 0 || (isInputType ? channelNumber >= This->wineasio_number_inputs : channelNumber >= This->wineasio_number_outputs))
+    if (channelNumber < 0 || (isInputType ? channelNumber >= This->pipeasio_number_inputs : channelNumber >= This->pipeasio_number_outputs))
         return -998;
 
     *linfo++ = (isInputType ? This->input_channel : This->output_channel)[channelNumber].active;
     *linfo++ = 0;
     *linfo++ = 19;
-    memcpy(linfo, (isInputType ? This->input_channel : This->output_channel)[channelNumber].port_name, WINEASIO_MAX_NAME_LENGTH);
+    memcpy(linfo, (isInputType ? This->input_channel : This->output_channel)[channelNumber].port_name, PIPEASIO_MAX_NAME_LENGTH);
 
     return 0;
 }
@@ -925,9 +925,9 @@ HIDDEN LONG STDMETHODCALLTYPE GetChannelInfo(LPWINEASIO iface, void *info)
  */
 
 DEFINE_THISCALL_WRAPPER(CreateBuffers,20)
-HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPWINEASIO iface, BufferInformation *bufferInfo, LONG numChannels, LONG bufferSize, Callbacks *callbacks)
+HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPPIPEASIO iface, BufferInformation *bufferInfo, LONG numChannels, LONG bufferSize, Callbacks *callbacks)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
     BufferInformation  *bufferInfoPerChannel = bufferInfo;
     int             i, j, k;
 
@@ -944,7 +944,7 @@ HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPWINEASIO iface, BufferInformation 
     {
         if (bufferInfoPerChannel->isInputType)
         {
-            if (j++ >= This->wineasio_number_inputs)
+            if (j++ >= This->pipeasio_number_inputs)
             {
                 WARN("Invalid input channel requested\n");
                 return -997;
@@ -952,7 +952,7 @@ HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPWINEASIO iface, BufferInformation 
         }
         else
         {
-            if (k++  >= This->wineasio_number_outputs)
+            if (k++  >= This->pipeasio_number_outputs)
             {
                 WARN("Invalid output channel requested\n");
                 return -997;
@@ -961,7 +961,7 @@ HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPWINEASIO iface, BufferInformation 
     }
 
     /* set buf_size */
-    if (This->wineasio_fixed_buffersize)
+    if (This->pipeasio_fixed_buffersize)
     {
         if (This->host_current_buffersize != bufferSize)
             return -997;
@@ -970,8 +970,8 @@ HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPWINEASIO iface, BufferInformation 
     else
     { /* fail if not a power of two and if out of range */
         if (!(bufferSize > 0 && !(bufferSize&(bufferSize-1))
-                && bufferSize >= WINEASIO_MINIMUM_BUFFERSIZE
-                && bufferSize <= WINEASIO_MAXIMUM_BUFFERSIZE))
+                && bufferSize >= PIPEASIO_MINIMUM_BUFFERSIZE
+                && bufferSize <= PIPEASIO_MAXIMUM_BUFFERSIZE))
         {
             WARN("Invalid buffersize %d requested\n", (int)bufferSize);
             return -997;
@@ -1008,28 +1008,28 @@ HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPWINEASIO iface, BufferInformation 
     /* Allocate audio buffers */
 
     This->callback_audio_buffer = HeapAlloc(GetProcessHeap(), 0,
-        (This->wineasio_number_inputs + This->wineasio_number_outputs) * 2 * This->host_current_buffersize * sizeof(audio_sample_t));
+        (This->pipeasio_number_inputs + This->pipeasio_number_outputs) * 2 * This->host_current_buffersize * sizeof(audio_sample_t));
     if (!This->callback_audio_buffer)
     {
-        ERR("Unable to allocate %i audio buffers\n", This->wineasio_number_inputs + This->wineasio_number_outputs);
+        ERR("Unable to allocate %i audio buffers\n", This->pipeasio_number_inputs + This->pipeasio_number_outputs);
         return -994;
     }
-    TRACE("%i audio buffers allocated (%i kB)\n", This->wineasio_number_inputs + This->wineasio_number_outputs,
-          (int) ((This->wineasio_number_inputs + This->wineasio_number_outputs) * 2 * This->host_current_buffersize * sizeof(audio_sample_t) / 1024));
+    TRACE("%i audio buffers allocated (%i kB)\n", This->pipeasio_number_inputs + This->pipeasio_number_outputs,
+          (int) ((This->pipeasio_number_inputs + This->pipeasio_number_outputs) * 2 * This->host_current_buffersize * sizeof(audio_sample_t) / 1024));
 
-    for (i = 0; i < This->wineasio_number_inputs; i++)
+    for (i = 0; i < This->pipeasio_number_inputs; i++)
         This->input_channel[i].audio_buffer = This->callback_audio_buffer + (i * 2 * This->host_current_buffersize);
-    for (i = 0; i < This->wineasio_number_outputs; i++)
-        This->output_channel[i].audio_buffer = This->callback_audio_buffer + ((This->wineasio_number_inputs + i) * 2 * This->host_current_buffersize);
+    for (i = 0; i < This->pipeasio_number_outputs; i++)
+        This->output_channel[i].audio_buffer = This->callback_audio_buffer + ((This->pipeasio_number_inputs + i) * 2 * This->host_current_buffersize);
 
     /* initialize BufferInformation structures */
     bufferInfoPerChannel = bufferInfo;
     This->host_active_inputs = This->host_active_outputs = 0;
 
-    for (i = 0; i < This->wineasio_number_inputs; i++) {
+    for (i = 0; i < This->pipeasio_number_inputs; i++) {
         This->input_channel[i].active = false;
     }
-    for (i = 0; i < This->wineasio_number_outputs; i++) {
+    for (i = 0; i < This->pipeasio_number_outputs; i++) {
         This->output_channel[i].active = false;
     }
 
@@ -1058,12 +1058,12 @@ HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPWINEASIO iface, BufferInformation 
         return -1000;
 
     /* connect to the hardware io */
-    if (This->wineasio_connect_to_hardware)
+    if (This->pipeasio_connect_to_hardware)
     {
-        for (i = 0; i < This->jack_num_input_ports && i < This->wineasio_number_inputs; i++)
+        for (i = 0; i < This->jack_num_input_ports && i < This->pipeasio_number_inputs; i++)
             if (strstr(audio_port_type(audio_port_by_name(This->jack_client, This->jack_input_ports[i])), "audio"))
                 audio_connect(This->jack_client, This->jack_input_ports[i], audio_port_name(This->input_channel[i].port));
-        for (i = 0; i < This->jack_num_output_ports && i < This->wineasio_number_outputs; i++)
+        for (i = 0; i < This->jack_num_output_ports && i < This->pipeasio_number_outputs; i++)
             if (strstr(audio_port_type(audio_port_by_name(This->jack_client, This->jack_output_ports[i])), "audio"))
                 audio_connect(This->jack_client, audio_port_name(This->output_channel[i].port), This->jack_output_ports[i]);
     }
@@ -1082,9 +1082,9 @@ HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPWINEASIO iface, BufferInformation 
  */
 
 DEFINE_THISCALL_WRAPPER(DisposeBuffers,4)
-HIDDEN LONG STDMETHODCALLTYPE DisposeBuffers(LPWINEASIO iface)
+HIDDEN LONG STDMETHODCALLTYPE DisposeBuffers(LPPIPEASIO iface)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)iface;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)iface;
     int             i;
 
     TRACE("iface: %p\n", iface);
@@ -1099,12 +1099,12 @@ HIDDEN LONG STDMETHODCALLTYPE DisposeBuffers(LPWINEASIO iface)
 
     This->host_callbacks = NULL;
 
-    for (i = 0; i < This->wineasio_number_inputs; i++)
+    for (i = 0; i < This->pipeasio_number_inputs; i++)
     {
         This->input_channel[i].audio_buffer = NULL;
         This->input_channel[i].active = false;
     }
-    for (i = 0; i < This->wineasio_number_outputs; i++)
+    for (i = 0; i < This->pipeasio_number_outputs; i++)
     {
         This->output_channel[i].audio_buffer = NULL;
         This->output_channel[i].active = false;
@@ -1126,9 +1126,9 @@ HIDDEN LONG STDMETHODCALLTYPE DisposeBuffers(LPWINEASIO iface)
  */
 
 DEFINE_THISCALL_WRAPPER(ControlPanel,4)
-HIDDEN LONG STDMETHODCALLTYPE ControlPanel(LPWINEASIO iface)
+HIDDEN LONG STDMETHODCALLTYPE ControlPanel(LPPIPEASIO iface)
 {
-    static char arg0[] = "wineasio-settings\0";
+    static char arg0[] = "pipeasio-settings\0";
     static char *arg_list[] = { arg0, NULL };
 
     TRACE("iface: %p\n", iface);
@@ -1150,9 +1150,9 @@ HIDDEN LONG STDMETHODCALLTYPE ControlPanel(LPWINEASIO iface)
  */
 
 DEFINE_THISCALL_WRAPPER(Future,12)
-HIDDEN LONG STDMETHODCALLTYPE Future(LPWINEASIO iface, LONG selector, void *opt)
+HIDDEN LONG STDMETHODCALLTYPE Future(LPPIPEASIO iface, LONG selector, void *opt)
 {
-    IWineASIOImpl           *This = (IWineASIOImpl *) iface;
+    IPipeASIOImpl           *This = (IPipeASIOImpl *) iface;
 
     TRACE("iface: %p, selector: %d, opt: %p\n", iface, (int)selector, opt);
 
@@ -1231,7 +1231,7 @@ HIDDEN LONG STDMETHODCALLTYPE Future(LPWINEASIO iface, LONG selector, void *opt)
  */
 
 DEFINE_THISCALL_WRAPPER(OutputReady,4)
-HIDDEN LONG STDMETHODCALLTYPE OutputReady(LPWINEASIO iface)
+HIDDEN LONG STDMETHODCALLTYPE OutputReady(LPPIPEASIO iface)
 {
     /* disabled to stop stand alone NI programs from spamming the console
     TRACE("iface: %p\n", iface); */
@@ -1244,7 +1244,7 @@ HIDDEN LONG STDMETHODCALLTYPE OutputReady(LPWINEASIO iface)
 
 static inline int jack_buffer_size_callback(audio_nframes_t nframes, void *arg)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)arg;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)arg;
 
     if(This->host_driver_state != Running)
         return 0;
@@ -1256,7 +1256,7 @@ static inline int jack_buffer_size_callback(audio_nframes_t nframes, void *arg)
 
 static inline void jack_latency_callback(audio_latency_mode_t mode, void *arg)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)arg;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)arg;
 
     if(This->host_driver_state != Running)
         return;
@@ -1269,7 +1269,7 @@ static inline void jack_latency_callback(audio_latency_mode_t mode, void *arg)
 
 static inline int jack_process_callback(audio_nframes_t nframes, void *arg)
 {
-    IWineASIOImpl               *This = (IWineASIOImpl*)arg;
+    IPipeASIOImpl               *This = (IPipeASIOImpl*)arg;
 
     int                         i;
     audio_transport_state_t      jack_transport_state;
@@ -1286,7 +1286,7 @@ static inline int jack_process_callback(audio_nframes_t nframes, void *arg)
     }
 
     /* copy jack to host buffers */
-    for (i = 0; i < This->wineasio_number_inputs; i++)
+    for (i = 0; i < This->pipeasio_number_inputs; i++)
         if (This->input_channel[i].active)
             memcpy (&This->input_channel[i].audio_buffer[nframes * This->host_buffer_index],
                     audio_port_get_buffer(This->input_channel[i].port, nframes),
@@ -1324,7 +1324,7 @@ static inline int jack_process_callback(audio_nframes_t nframes, void *arg)
     }
 
     /* copy host to jack buffers */
-    for (i = 0; i < This->wineasio_number_outputs; i++)
+    for (i = 0; i < This->pipeasio_number_outputs; i++)
         if (This->output_channel[i].active)
             memcpy(audio_port_get_buffer(This->output_channel[i].port, nframes),
                     &This->output_channel[i].audio_buffer[nframes * This->host_buffer_index],
@@ -1337,7 +1337,7 @@ static inline int jack_process_callback(audio_nframes_t nframes, void *arg)
 
 static inline int jack_sample_rate_callback(audio_nframes_t nframes, void *arg)
 {
-    IWineASIOImpl   *This = (IWineASIOImpl*)arg;
+    IPipeASIOImpl   *This = (IPipeASIOImpl*)arg;
 
     if(This->host_driver_state != Running)
         return 0;
@@ -1387,7 +1387,7 @@ static DWORD WINAPI jack_thread_creator_helper(LPVOID arg)
     return 0;
 }
 
-static VOID configure_driver(IWineASIOImpl *This)
+static VOID configure_driver(IPipeASIOImpl *This)
 {
     HKEY    hkey;
     LONG    result, value;
@@ -1397,21 +1397,21 @@ static VOID configure_driver(IWineASIOImpl *This)
     char    environment_variable[MAX_ENVIRONMENT_SIZE];
 
     /* Unicode strings used for the registry */
-    static const WCHAR key_software_wine_wineasio[] =
+    static const WCHAR key_software_wine_pipeasio[] =
         { 'S','o','f','t','w','a','r','e','\\',
           'W','i','n','e','\\',
-          'W','i','n','e','A','S','I','O',0 };
-    static const WCHAR value_wineasio_number_inputs[] =
+          'P','i','p','e','A','S','I','O',0 };
+    static const WCHAR value_pipeasio_number_inputs[] =
         { 'N','u','m','b','e','r',' ','o','f',' ','i','n','p','u','t','s',0 };
-    static const WCHAR value_wineasio_number_outputs[] =
+    static const WCHAR value_pipeasio_number_outputs[] =
         { 'N','u','m','b','e','r',' ','o','f',' ','o','u','t','p','u','t','s',0 };
-    static const WCHAR value_wineasio_fixed_buffersize[] =
+    static const WCHAR value_pipeasio_fixed_buffersize[] =
         { 'F','i','x','e','d',' ','b','u','f','f','e','r','s','i','z','e',0 };
-    static const WCHAR value_wineasio_preferred_buffersize[] =
+    static const WCHAR value_pipeasio_preferred_buffersize[] =
         { 'P','r','e','f','e','r','r','e','d',' ','b','u','f','f','e','r','s','i','z','e',0 };
-    static const WCHAR wineasio_autostart_server[] =
+    static const WCHAR pipeasio_autostart_server[] =
         { 'A','u','t','o','s','t','a','r','t',' ','s','e','r','v','e','r',0 };
-    static const WCHAR value_wineasio_connect_to_hardware[] =
+    static const WCHAR value_pipeasio_connect_to_hardware[] =
         { 'C','o','n','n','e','c','t',' ','t','o',' ','h','a','r','d','w','a','r','e',0 };
 
     /* Initialise most member variables,
@@ -1428,12 +1428,12 @@ static VOID configure_driver(IWineASIOImpl *This)
     This->host_time_info_mode = FALSE;
     This->host_version = 92;
 
-    This->wineasio_number_inputs = 16;
-    This->wineasio_number_outputs = 16;
-    This->wineasio_autostart_server = FALSE;
-    This->wineasio_connect_to_hardware = TRUE;
-    This->wineasio_fixed_buffersize = TRUE;
-    This->wineasio_preferred_buffersize = WINEASIO_PREFERRED_BUFFERSIZE;
+    This->pipeasio_number_inputs = 16;
+    This->pipeasio_number_outputs = 16;
+    This->pipeasio_autostart_server = FALSE;
+    This->pipeasio_connect_to_hardware = TRUE;
+    This->pipeasio_fixed_buffersize = TRUE;
+    This->pipeasio_preferred_buffersize = PIPEASIO_PREFERRED_BUFFERSIZE;
 
     This->jack_client = NULL;
     This->jack_client_name[0] = 0;
@@ -1444,96 +1444,96 @@ static VOID configure_driver(IWineASIOImpl *This)
     This->output_channel = NULL;
 
     /* create registry entries with defaults if not present */
-    result = RegCreateKeyExW(HKEY_CURRENT_USER, key_software_wine_wineasio, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hkey, NULL);
+    result = RegCreateKeyExW(HKEY_CURRENT_USER, key_software_wine_pipeasio, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hkey, NULL);
 
-    /* get/set number of wineasio inputs */
+    /* get/set number of pipeasio inputs */
     size = sizeof(DWORD);
-    if (RegQueryValueExW(hkey, value_wineasio_number_inputs, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
+    if (RegQueryValueExW(hkey, value_pipeasio_number_inputs, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
     {
         if (type == REG_DWORD)
-            This->wineasio_number_inputs = value;
+            This->pipeasio_number_inputs = value;
     }
     else
     {
         type = REG_DWORD;
         size = sizeof(DWORD);
-        value = This->wineasio_number_inputs;
-        result = RegSetValueExW(hkey, value_wineasio_number_inputs, 0, REG_DWORD, (LPBYTE) &value, size);
+        value = This->pipeasio_number_inputs;
+        result = RegSetValueExW(hkey, value_pipeasio_number_inputs, 0, REG_DWORD, (LPBYTE) &value, size);
     }
 
-    /* get/set number of wineasio outputs */
+    /* get/set number of pipeasio outputs */
     size = sizeof(DWORD);
-    if (RegQueryValueExW(hkey, value_wineasio_number_outputs, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
+    if (RegQueryValueExW(hkey, value_pipeasio_number_outputs, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
     {
         if (type == REG_DWORD)
-            This->wineasio_number_outputs = value;
+            This->pipeasio_number_outputs = value;
     }
     else
     {
         type = REG_DWORD;
         size = sizeof(DWORD);
-        value = This->wineasio_number_outputs;
-        result = RegSetValueExW(hkey, value_wineasio_number_outputs, 0, REG_DWORD, (LPBYTE) &value, size);
+        value = This->pipeasio_number_outputs;
+        result = RegSetValueExW(hkey, value_pipeasio_number_outputs, 0, REG_DWORD, (LPBYTE) &value, size);
     }
 
-    /* allow changing of wineasio buffer sizes */
+    /* allow changing of pipeasio buffer sizes */
     size = sizeof(DWORD);
-    if (RegQueryValueExW(hkey, value_wineasio_fixed_buffersize, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
+    if (RegQueryValueExW(hkey, value_pipeasio_fixed_buffersize, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
     {
         if (type == REG_DWORD)
-            This->wineasio_fixed_buffersize = value;
+            This->pipeasio_fixed_buffersize = value;
     }
     else
     {
         type = REG_DWORD;
         size = sizeof(DWORD);
-        value = This->wineasio_fixed_buffersize;
-        result = RegSetValueExW(hkey, value_wineasio_fixed_buffersize, 0, REG_DWORD, (LPBYTE) &value, size);
+        value = This->pipeasio_fixed_buffersize;
+        result = RegSetValueExW(hkey, value_pipeasio_fixed_buffersize, 0, REG_DWORD, (LPBYTE) &value, size);
     }
 
     /* preferred buffer size (if changing buffersize is allowed) */
     size = sizeof(DWORD);
-    if (RegQueryValueExW(hkey, value_wineasio_preferred_buffersize, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
+    if (RegQueryValueExW(hkey, value_pipeasio_preferred_buffersize, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
     {
         if (type == REG_DWORD)
-            This->wineasio_preferred_buffersize = value;
+            This->pipeasio_preferred_buffersize = value;
     }
     else
     {
         type = REG_DWORD;
         size = sizeof(DWORD);
-        value = This->wineasio_preferred_buffersize;
-        result = RegSetValueExW(hkey, value_wineasio_preferred_buffersize, 0, REG_DWORD, (LPBYTE) &value, size);
+        value = This->pipeasio_preferred_buffersize;
+        result = RegSetValueExW(hkey, value_pipeasio_preferred_buffersize, 0, REG_DWORD, (LPBYTE) &value, size);
     }
 
     /* get/set JACK autostart */
     size = sizeof(DWORD);
-    if (RegQueryValueExW(hkey, wineasio_autostart_server, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
+    if (RegQueryValueExW(hkey, pipeasio_autostart_server, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
     {
         if (type == REG_DWORD)
-            This->wineasio_autostart_server = value;
+            This->pipeasio_autostart_server = value;
     }
     else
     {
         type = REG_DWORD;
         size = sizeof(DWORD);
-        value = This->wineasio_autostart_server;
-        result = RegSetValueExW(hkey, wineasio_autostart_server, 0, REG_DWORD, (LPBYTE) &value, size);
+        value = This->pipeasio_autostart_server;
+        result = RegSetValueExW(hkey, pipeasio_autostart_server, 0, REG_DWORD, (LPBYTE) &value, size);
     }
 
     /* get/set JACK connect to physical io */
     size = sizeof(DWORD);
-    if (RegQueryValueExW(hkey, value_wineasio_connect_to_hardware, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
+    if (RegQueryValueExW(hkey, value_pipeasio_connect_to_hardware, NULL, &type, (LPBYTE) &value, &size) == ERROR_SUCCESS)
     {
         if (type == REG_DWORD)
-            This->wineasio_connect_to_hardware = value;
+            This->pipeasio_connect_to_hardware = value;
     }
     else
     {
         type = REG_DWORD;
         size = sizeof(DWORD);
-        value = This->wineasio_connect_to_hardware;
-        result = RegSetValueExW(hkey, value_wineasio_connect_to_hardware, 0, REG_DWORD, (LPBYTE) &value, size);
+        value = This->pipeasio_connect_to_hardware;
+        result = RegSetValueExW(hkey, value_pipeasio_connect_to_hardware, 0, REG_DWORD, (LPBYTE) &value, size);
     }
 
     /* get client name by stripping path and extension */
@@ -1542,78 +1542,78 @@ static VOID configure_driver(IWineASIOImpl *This)
     *application_name = 0;
     application_name = strrchrW(application_path, L'\\');
     application_name++;
-    WideCharToMultiByte(CP_ACP, WC_SEPCHARS, application_name, -1, This->jack_client_name, WINEASIO_MAX_NAME_LENGTH, NULL, NULL);
+    WideCharToMultiByte(CP_ACP, WC_SEPCHARS, application_name, -1, This->jack_client_name, PIPEASIO_MAX_NAME_LENGTH, NULL, NULL);
 
     RegCloseKey(hkey);
 
     /* Look for environment variables to override registry config values */
 
-    if (GetEnvironmentVariableA("WINEASIO_NUMBER_INPUTS", environment_variable, MAX_ENVIRONMENT_SIZE))
+    if (GetEnvironmentVariableA("PIPEASIO_NUMBER_INPUTS", environment_variable, MAX_ENVIRONMENT_SIZE))
     {
         errno = 0;
         result = strtol(environment_variable, 0, 10);
         if (errno != ERANGE)
-            This->wineasio_number_inputs = result;
+            This->pipeasio_number_inputs = result;
     }
 
-    if (GetEnvironmentVariableA("WINEASIO_NUMBER_OUTPUTS", environment_variable, MAX_ENVIRONMENT_SIZE))
+    if (GetEnvironmentVariableA("PIPEASIO_NUMBER_OUTPUTS", environment_variable, MAX_ENVIRONMENT_SIZE))
     {
         errno = 0;
         result = strtol(environment_variable, 0, 10);
         if (errno != ERANGE)
-            This->wineasio_number_outputs = result;
+            This->pipeasio_number_outputs = result;
     }
 
-    if (GetEnvironmentVariableA("WINEASIO_AUTOSTART_SERVER", environment_variable, MAX_ENVIRONMENT_SIZE))
+    if (GetEnvironmentVariableA("PIPEASIO_AUTOSTART_SERVER", environment_variable, MAX_ENVIRONMENT_SIZE))
     {
         if (!strcasecmp(environment_variable, "on"))
-            This->wineasio_autostart_server = TRUE;
+            This->pipeasio_autostart_server = TRUE;
         else if (!strcasecmp(environment_variable, "off"))
-            This->wineasio_autostart_server = FALSE;
+            This->pipeasio_autostart_server = FALSE;
     }
 
-    if (GetEnvironmentVariableA("WINEASIO_CONNECT_TO_HARDWARE", environment_variable, MAX_ENVIRONMENT_SIZE))
+    if (GetEnvironmentVariableA("PIPEASIO_CONNECT_TO_HARDWARE", environment_variable, MAX_ENVIRONMENT_SIZE))
     {
         if (!strcasecmp(environment_variable, "on"))
-            This->wineasio_connect_to_hardware = TRUE;
+            This->pipeasio_connect_to_hardware = TRUE;
         else if (!strcasecmp(environment_variable, "off"))
-            This->wineasio_connect_to_hardware = FALSE;
+            This->pipeasio_connect_to_hardware = FALSE;
     }
 
-    if (GetEnvironmentVariableA("WINEASIO_FIXED_BUFFERSIZE", environment_variable, MAX_ENVIRONMENT_SIZE))
+    if (GetEnvironmentVariableA("PIPEASIO_FIXED_BUFFERSIZE", environment_variable, MAX_ENVIRONMENT_SIZE))
     {
         if (!strcasecmp(environment_variable, "on"))
-            This->wineasio_fixed_buffersize = TRUE;
+            This->pipeasio_fixed_buffersize = TRUE;
         else if (!strcasecmp(environment_variable, "off"))
-            This->wineasio_fixed_buffersize = FALSE;
+            This->pipeasio_fixed_buffersize = FALSE;
     }
 
-    if (GetEnvironmentVariableA("WINEASIO_PREFERRED_BUFFERSIZE", environment_variable, MAX_ENVIRONMENT_SIZE))
+    if (GetEnvironmentVariableA("PIPEASIO_PREFERRED_BUFFERSIZE", environment_variable, MAX_ENVIRONMENT_SIZE))
     {
         errno = 0;
         result = strtol(environment_variable, 0, 10);
         if (errno != ERANGE)
-            This->wineasio_preferred_buffersize = result;
+            This->pipeasio_preferred_buffersize = result;
     }
 
     /* over ride the JACK client name gotten from the application name */
-    size = GetEnvironmentVariableA("WINEASIO_CLIENT_NAME", environment_variable, WINEASIO_MAX_NAME_LENGTH);
-    if (size > 0 && size < WINEASIO_MAX_NAME_LENGTH)
+    size = GetEnvironmentVariableA("PIPEASIO_CLIENT_NAME", environment_variable, PIPEASIO_MAX_NAME_LENGTH);
+    if (size > 0 && size < PIPEASIO_MAX_NAME_LENGTH)
         strcpy(This->jack_client_name, environment_variable);
 
-    /* if wineasio_preferred_buffersize is not a power of two or if out of range, then set to WINEASIO_PREFERRED_BUFFERSIZE */
-    if (!(This->wineasio_preferred_buffersize > 0 && !(This->wineasio_preferred_buffersize&(This->wineasio_preferred_buffersize-1))
-            && This->wineasio_preferred_buffersize >= WINEASIO_MINIMUM_BUFFERSIZE
-            && This->wineasio_preferred_buffersize <= WINEASIO_MAXIMUM_BUFFERSIZE))
-        This->wineasio_preferred_buffersize = WINEASIO_PREFERRED_BUFFERSIZE;
+    /* if pipeasio_preferred_buffersize is not a power of two or if out of range, then set to PIPEASIO_PREFERRED_BUFFERSIZE */
+    if (!(This->pipeasio_preferred_buffersize > 0 && !(This->pipeasio_preferred_buffersize&(This->pipeasio_preferred_buffersize-1))
+            && This->pipeasio_preferred_buffersize >= PIPEASIO_MINIMUM_BUFFERSIZE
+            && This->pipeasio_preferred_buffersize <= PIPEASIO_MAXIMUM_BUFFERSIZE))
+        This->pipeasio_preferred_buffersize = PIPEASIO_PREFERRED_BUFFERSIZE;
 
     return;
 }
 
-/* Allocate the interface pointer and associate it with the vtbl/WineASIO object */
-HRESULT WINAPI WineASIOCreateInstance(REFIID riid, LPVOID *ppobj)
+/* Allocate the interface pointer and associate it with the vtbl/PipeASIO object */
+HRESULT WINAPI PipeASIOCreateInstance(REFIID riid, LPVOID *ppobj)
 {
-    IWineASIOImpl   *pobj;
+    IPipeASIOImpl   *pobj;
 
     /* TRACE("riid: %s, ppobj: %p\n", debugstr_guid(riid), ppobj); */
 
@@ -1624,7 +1624,7 @@ HRESULT WINAPI WineASIOCreateInstance(REFIID riid, LPVOID *ppobj)
         return E_OUTOFMEMORY;
     }
 
-    pobj->lpVtbl = &WineASIO_Vtbl;
+    pobj->lpVtbl = &PipeASIO_Vtbl;
     pobj->ref = 1;
     TRACE("pobj = %p\n", pobj);
     *ppobj = pobj;

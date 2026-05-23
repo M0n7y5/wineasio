@@ -1,5 +1,5 @@
 /*
- *	self-registerable dll functions for wineasio.dll
+ *	self-registerable dll functions for pipeasio.dll
  *
  * Copyright (C) 2003 John K. Hohm
  * Copyright (C) 2006 Robert Reif
@@ -502,18 +502,18 @@ static LONG recursive_delete_keyW(HKEY base, WCHAR const *name)
 /***********************************************************************
  *		coclass list
  */
-// {48D0C522-BFCC-45cc-8B84-17F25F33E6E8}
-static GUID const CLSID_WineASIO = {
-0x48d0c522, 0xbfcc, 0x45cc, { 0x8b, 0x84, 0x17, 0xf2, 0x5f, 0x33, 0xe6, 0xe8 } };
+// {2d3ca9e2-1193-4c5d-b5fd-38798f3dc074}
+static GUID const CLSID_PipeASIO = {
+0x2d3ca9e2, 0x1193, 0x4c5d, { 0xb5, 0xfd, 0x38, 0x79, 0x8f, 0x3d, 0xc0, 0x74 } };
 
 static struct regsvr_coclass const coclass_list[] = {
-    {   &CLSID_WineASIO,
-	"WineASIO Object",
+    {   &CLSID_PipeASIO,
+	"PipeASIO Object",
 	NULL,
 #ifdef _WIN64
-	"wineasio64.dll",
+	"pipeasio64.dll",
 #else
-	"wineasio32.dll",
+	"pipeasio32.dll",
 #endif
 	"Apartment"
     },
@@ -533,11 +533,11 @@ static struct regsvr_interface const interface_list[] = {
  */
 static HRESULT register_driver(void)
 {
-    LPCSTR asio_key = "Software\\ASIO\\WineASIO";
+    LPCSTR asio_key = "Software\\ASIO\\PipeASIO";
     LPCSTR clsid = "CLSID";
-    LPCSTR wine_clsid = "{48D0C522-BFCC-45CC-8B84-17F25F33E6E8}";
+    LPCSTR wine_clsid = "{2D3CA9E2-1193-4C5D-B5FD-38798F3DC074}";
     LPCSTR desc = "Description";
-    LPCSTR wine_desc = "WineASIO Driver";
+    LPCSTR wine_desc = "PipeASIO Driver";
     HKEY key;
     LONG rc;
 
@@ -560,7 +560,7 @@ static HRESULT register_driver(void)
 }
 
 /***********************************************************************
- *		DllRegisterServer (wineasio.@)
+ *		DllRegisterServer (pipeasio.@)
  */
 HRESULT WINAPI DllRegisterServer(void)
 {
@@ -583,14 +583,14 @@ HRESULT WINAPI DllRegisterServer(void)
  */
 static HRESULT unregister_driver(void)
 {
-    LPCSTR asio_key = "Software\\ASIO\\WineASIO";
+    LPCSTR asio_key = "Software\\ASIO\\PipeASIO";
 
     /* FIXME */
     return recursive_delete_keyA(HKEY_LOCAL_MACHINE, asio_key);
 }
 
 /***********************************************************************
- *		DllUnregisterServer (wineasio.@)
+ *		DllUnregisterServer (pipeasio.@)
  */
 HRESULT WINAPI DllUnregisterServer(void)
 {

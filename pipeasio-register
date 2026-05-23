@@ -1,0 +1,43 @@
+#!/bin/bash
+me=pipeasio-register
+# exit if any command fails (commented so project-specific errors can be shown via echo)
+# set -e
+
+# read WINEPREFIX from environment, with fallback if unset
+WINEPREFIX=${WINEPREFIX:=~/.wine}
+
+# make sure the WINEPREFIX directory exists
+if [ ! -d "${WINEPREFIX}" ]; then
+    wineboot -u || exit $?
+fi
+
+# Candidate install locations for the 64-bit PipeASIO ELF .so half.
+# We mirror the directory pattern Wine looks at; for each, the matching
+# Windows-side PE fake DLL must also exist before we register.
+candidates=(
+"/opt/wine-devel/lib64/wine/x86_64-unix/pipeasio64.dll.so"
+"/opt/wine-stable/lib64/wine/x86_64-unix/pipeasio64.dll.so"
+"/opt/wine-staging/lib64/wine/x86_64-unix/pipeasio64.dll.so"
+"/usr/lib/wine/x86_64-unix/pipeasio64.dll.so"
+"/usr/lib64/wine/x86_64-unix/pipeasio64.dll.so"
+"/usr/lib/x86_64-linux-gnu/wine/x86_64-unix/pipeasio64.dll.so"
+)
+
+status="not found"
+code=0
+for u in ${candidates[@]}; do
+    w=$(echo ${u} | sed -e 's|/x86_64-unix/pipeasio64.dll.so|/x86_64-windows/pipeasio64.dll|g')
+    if [ -e "${u}" ] && [ -e "${w}" ]; then
+        cp -v "${w}" "${WINEPREFIX}/drive_c/windows/system32"
+        wine regsvr32 "${u}"
+        code=$?
+        if [ $code -eq 0 ]; then
+            status="registered"
+        else
+            status="registration failed"
+        fi
+        break
+    fi
+done
+>&2 echo "[$me] 64-bit dll.so $status"
+exit $code

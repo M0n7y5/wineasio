@@ -30,16 +30,16 @@
 #endif
 /* WINE_DEFAULT_DEBUG_CHANNEL(asio); */
 
-/* {48D0C522-BFCC-45cc-8B84-17F25F33E6E8} */
-static GUID const CLSID_WineASIO = {
-0x48d0c522, 0xbfcc, 0x45cc, { 0x8b, 0x84, 0x17, 0xf2, 0x5f, 0x33, 0xe6, 0xe8 } };
+/* {2d3ca9e2-1193-4c5d-b5fd-38798f3dc074} */
+static GUID const CLSID_PipeASIO = {
+0x2d3ca9e2, 0x1193, 0x4c5d, { 0xb5, 0xfd, 0x38, 0x79, 0x8f, 0x3d, 0xc0, 0x74 } };
 
 typedef struct {
     const IClassFactoryVtbl * lpVtbl;
     LONG ref;
 } IClassFactoryImpl;
 
-extern HRESULT WINAPI WineASIOCreateInstance(REFIID riid, LPVOID *ppobj);
+extern HRESULT WINAPI PipeASIOCreateInstance(REFIID riid, LPVOID *ppobj);
 
 /*******************************************************************************
  * ClassFactory
@@ -85,8 +85,8 @@ static HRESULT WINAPI CF_CreateInstance(LPCLASSFACTORY iface, LPUNKNOWN pOuter, 
     }
 
     *ppobj = NULL;
-    /* TRACE("Creating the WineASIO object\n"); */
-    return WineASIOCreateInstance(riid, ppobj);
+    /* TRACE("Creating the PipeASIO object\n"); */
+    return PipeASIOCreateInstance(riid, ppobj);
 }
 
 static HRESULT WINAPI CF_LockServer(LPCLASSFACTORY iface, BOOL dolock)
@@ -104,7 +104,7 @@ static const IClassFactoryVtbl CF_Vtbl = {
     CF_LockServer
 };
 
-static IClassFactoryImpl WINEASIO_CF = { &CF_Vtbl, 1 };
+static IClassFactoryImpl PIPEASIO_CF = { &CF_Vtbl, 1 };
 
 /*******************************************************************************
  * DllGetClassObject [DSOUND.@]
@@ -140,10 +140,10 @@ HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv)
         return E_NOINTERFACE;
     }
 
-    if (IsEqualGUID(rclsid, &CLSID_WineASIO))
+    if (IsEqualGUID(rclsid, &CLSID_PipeASIO))
     {
-        CF_AddRef((IClassFactory*) &WINEASIO_CF);
-        *ppv = &WINEASIO_CF;
+        CF_AddRef((IClassFactory*) &PIPEASIO_CF);
+        *ppv = &PIPEASIO_CF;
         return S_OK;
     }
 

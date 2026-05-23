@@ -66,24 +66,24 @@ destroy: clean
 install:
 	# Create directories
 	install -d $(DESTDIR)$(PREFIX)/bin/
-	install -d $(DESTDIR)$(PREFIX)/share/wineasio/
+	install -d $(DESTDIR)$(PREFIX)/share/pipeasio/
 
 	# Install script files and binaries
 	install -m 755 \
-		wineasio-settings \
+		pipeasio-settings \
 		$(DESTDIR)$(PREFIX)/bin/
 
 	# Adjust PREFIX value in script files
 	sed -i "s?X-PREFIX-X?$(PREFIX)?" \
-		$(DESTDIR)$(PREFIX)/bin/wineasio-settings
+		$(DESTDIR)$(PREFIX)/bin/pipeasio-settings
 
 	# Install code
-	install -m 644 *.py $(DESTDIR)$(PREFIX)/share/wineasio/
+	install -m 644 *.py $(DESTDIR)$(PREFIX)/share/pipeasio/
 
 # ---------------------------------------------------------------------------------------------------------------------
 
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/wineasio-settings
-	rm -rf $(DESTDIR)$(PREFIX)/share/wineasio/
+	rm -f $(DESTDIR)$(PREFIX)/bin/pipeasio-settings
+	rm -rf $(DESTDIR)$(PREFIX)/share/pipeasio/
 
 # ---------------------------------------------------------------------------------------------------------------------

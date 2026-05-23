@@ -25,7 +25,7 @@
         <item>
          <widget class="QLabel" name="label_ports_in">
           <property name="toolTip">
-           <string>Number of jack ports that wineasio will try to open.
+           <string>Number of audio ports that PipeASIO will try to open.
 Default is 16</string>
           </property>
           <property name="text">
@@ -39,7 +39,7 @@ Default is 16</string>
         <item>
          <widget class="QSpinBox" name="sb_ports_in">
           <property name="toolTip">
-           <string>Number of jack ports that wineasio will try to open.
+           <string>Number of audio ports that PipeASIO will try to open.
 Default is 16</string>
           </property>
           <property name="maximum">
@@ -57,7 +57,7 @@ Default is 16</string>
         <item>
          <widget class="QLabel" name="label_ports_out">
           <property name="toolTip">
-           <string>Number of jack ports that wineasio will try to open.
+           <string>Number of audio ports that PipeASIO will try to open.
 Default is 16</string>
           </property>
           <property name="text">
@@ -71,7 +71,7 @@ Default is 16</string>
         <item>
          <widget class="QSpinBox" name="sb_ports_out">
           <property name="toolTip">
-           <string>Number of jack ports that wineasio will try to open.
+           <string>Number of audio ports that PipeASIO will try to open.
 Default is 16</string>
           </property>
           <property name="minimum">
@@ -149,7 +149,7 @@ Default is on</string>
         <item>
          <widget class="QCheckBox" name="cb_jack_autostart">
           <property name="toolTip">
-           <string>Enable wineasio to launch the jack server.
+           <string>Honored as a no-op under PipeWire (the daemon is always running).
 Default is off</string>
           </property>
           <property name="text">

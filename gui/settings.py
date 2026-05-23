@@ -45,11 +45,11 @@ WINEPREFIX = os.getenv("WINEPREFIX")
 if not WINEPREFIX:
     WINEPREFIX = os.path.join(HOME, ".wine")
 
-WINEASIO_PREFIX = "HKEY_CURRENT_USER\\Software\\Wine\\WineASIO"
+PIPEASIO_PREFIX = "HKEY_CURRENT_USER\\Software\\Wine\\PipeASIO"
 
 # ---------------------------------------------------------------------------------------------------------------------
 
-def getWineASIOKeyValue(key: str, default: str):
+def getPipeASIOKeyValue(key: str, default: str):
     wineFile = os.path.join(WINEPREFIX, "user.reg")
 
     if not os.path.exists(wineFile):
@@ -59,7 +59,7 @@ def getWineASIOKeyValue(key: str, default: str):
     wineDump  = wineDumpF.read()
     wineDumpF.close()
 
-    wineDumpSplit = wineDump.split("[Software\\\\Wine\\\\WineASIO]")
+    wineDumpSplit = wineDump.split("[Software\\\\Wine\\\\PipeASIO]")
 
     if len(wineDumpSplit) <= 1:
         return default
@@ -104,13 +104,13 @@ class PipeASIOSettingsDialog(QDialog, Ui_PipeASIOSettings):
         self.cb_jack_buffer_size.currentIndexChanged[int].connect(self.slot_flagChanged)
 
     def loadSettings(self):
-        ins  = int(getWineASIOKeyValue("Number of inputs", "00000010"), 16)
-        outs = int(getWineASIOKeyValue("Number of outputs", "00000010"), 16)
-        hw   = bool(int(getWineASIOKeyValue("Connect to hardware", "00000001"), 10))
+        ins  = int(getPipeASIOKeyValue("Number of inputs", "00000010"), 16)
+        outs = int(getPipeASIOKeyValue("Number of outputs", "00000010"), 16)
+        hw   = bool(int(getPipeASIOKeyValue("Connect to hardware", "00000001"), 10))
 
-        autostart    = bool(int(getWineASIOKeyValue("Autostart server", "00000000"), 10))
-        fixed_bsize  = bool(int(getWineASIOKeyValue("Fixed buffersize", "00000001"), 10))
-        prefer_bsize = int(getWineASIOKeyValue("Preferred buffersize", "00000400"), 16)
+        autostart    = bool(int(getPipeASIOKeyValue("Autostart server", "00000000"), 10))
+        fixed_bsize  = bool(int(getPipeASIOKeyValue("Fixed buffersize", "00000001"), 10))
+        prefer_bsize = int(getPipeASIOKeyValue("Preferred buffersize", "00000400"), 16)
 
         for bsize in BUFFER_SIZE_LIST:
             self.cb_jack_buffer_size.addItem(str(bsize))
@@ -144,7 +144,7 @@ class PipeASIOSettingsDialog(QDialog, Ui_PipeASIOSettings):
     def slot_saveSettings(self):
         REGFILE  = 'REGEDIT4\n'
         REGFILE += '\n'
-        REGFILE += '[HKEY_CURRENT_USER\\Software\\Wine\\WineASIO]\n'
+        REGFILE += '[HKEY_CURRENT_USER\\Software\\Wine\\PipeASIO]\n'
         REGFILE += '"Autostart server"=dword:0000000%i\n' % int(1 if self.cb_jack_autostart.isChecked() else 0)
         REGFILE += '"Connect to hardware"=dword:0000000%i\n' % int(1 if self.cb_ports_connect_hw.isChecked() else 0)
         REGFILE += '"Fixed buffersize"=dword:0000000%i\n' % int(1 if self.cb_jack_fixed_bsize.isChecked() else 0)
@@ -152,10 +152,10 @@ class PipeASIOSettingsDialog(QDialog, Ui_PipeASIOSettings):
         REGFILE += '"Number of outputs"=dword:000000%s\n' % smartHex(self.sb_ports_out.value(), 2)
         REGFILE += '"Preferred buffersize"=dword:0000%s\n' % smartHex(int(self.cb_jack_buffer_size.currentText()), 4)
 
-        with open("/tmp/wineasio-settings.reg", "w") as fh:
+        with open("/tmp/pipeasio-settings.reg", "w") as fh:
             fh.write(REGFILE)
 
-        os.system("regedit /tmp/wineasio-settings.reg")
+        os.system("regedit /tmp/pipeasio-settings.reg")
 
 # ---------------------------------------------------------------------------------------------------------------------
 

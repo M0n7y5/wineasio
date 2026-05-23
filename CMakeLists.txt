@@ -23,8 +23,8 @@ message(STATUS "Found libpipewire-0.3 ${PIPEWIRE_VERSION}")
 include(WineDLL)
 
 add_wine_dll(
-    NAME      wineasio64
-    SPEC      ${CMAKE_SOURCE_DIR}/wineasio.dll.spec
+    NAME      pipeasio64
+    SPEC      ${CMAKE_SOURCE_DIR}/pipeasio.dll.spec
     SOURCES   src/asio.c
               src/audio.c
               src/main.c
