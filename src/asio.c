@@ -60,6 +60,7 @@
 #endif
 
 #include "audio.h"
+#include "pipeasio_offsets.h"
 
 #ifdef DEBUG
 WINE_DEFAULT_DEBUG_CHANNEL(asio);
@@ -1019,20 +1020,26 @@ HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPPIPEASIO iface, BufferInformation 
 
     /* Allocate audio buffers */
 
-    This->callback_audio_buffer = HeapAlloc(GetProcessHeap(), 0,
-        (This->pipeasio_number_inputs + This->pipeasio_number_outputs) * 2 * This->host_current_buffersize * sizeof(audio_sample_t));
+    const size_t cb_bytes = pipeasio_host_callback_size_bytes(
+        This->pipeasio_number_inputs, This->pipeasio_number_outputs,
+        This->host_current_buffersize, sizeof(audio_sample_t));
+    This->callback_audio_buffer = HeapAlloc(GetProcessHeap(), 0, cb_bytes);
     if (!This->callback_audio_buffer)
     {
         ERR("Unable to allocate %i audio buffers\n", This->pipeasio_number_inputs + This->pipeasio_number_outputs);
         return -994;
     }
-    TRACE("%i audio buffers allocated (%i kB)\n", This->pipeasio_number_inputs + This->pipeasio_number_outputs,
-          (int) ((This->pipeasio_number_inputs + This->pipeasio_number_outputs) * 2 * This->host_current_buffersize * sizeof(audio_sample_t) / 1024));
+    TRACE("%i audio buffers allocated (%zu kB)\n",
+          This->pipeasio_number_inputs + This->pipeasio_number_outputs,
+          cb_bytes / 1024);
 
     for (i = 0; i < This->pipeasio_number_inputs; i++)
-        This->input_channel[i].audio_buffer = This->callback_audio_buffer + (i * 2 * This->host_current_buffersize);
+        This->input_channel[i].audio_buffer = This->callback_audio_buffer
+            + pipeasio_host_input_offset_samples(i, This->host_current_buffersize);
     for (i = 0; i < This->pipeasio_number_outputs; i++)
-        This->output_channel[i].audio_buffer = This->callback_audio_buffer + ((This->pipeasio_number_inputs + i) * 2 * This->host_current_buffersize);
+        This->output_channel[i].audio_buffer = This->callback_audio_buffer
+            + pipeasio_host_output_offset_samples(i, This->pipeasio_number_inputs,
+                                                  This->host_current_buffersize);
 
     /* initialize BufferInformation structures */
     bufferInfoPerChannel = bufferInfo;

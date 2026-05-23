@@ -18,6 +18,7 @@
 #define _GNU_SOURCE   /* memfd_create, MFD_CLOEXEC, SCHED_FIFO */
 
 #include "audio.h"
+#include "pipeasio_offsets.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include "windef.h"
@@ -615,7 +616,8 @@ bool audio_activate(audio_client_t *c)
 
     const size_t bsize_samples = c->buffer_size;
     const size_t bsize_bytes   = bsize_samples * sizeof(audio_sample_t);
-    const size_t total_bytes   = c->n_ports * 2 * bsize_bytes;
+    const size_t total_bytes   = pipeasio_memfd_size_bytes(
+        c->n_ports, bsize_samples, sizeof(audio_sample_t));
 
     /* Allocate the memfd that backs every DSP buffer.  Layout:
      *   [ch0 half0][ch0 half1][ch1 half0][ch1 half1]...  */
@@ -641,8 +643,8 @@ bool audio_activate(audio_client_t *c)
     for (uint32_t i = 0; i < c->n_ports; i++) {
         audio_port_t *p   = c->ports[i];
         p->channel_idx    = i;
-        p->mapoffset[0]   = (size_t)(i * 2 + 0) * bsize_bytes;
-        p->mapoffset[1]   = (size_t)(i * 2 + 1) * bsize_bytes;
+        p->mapoffset[0]   = pipeasio_mapoffset_bytes(i, 0, bsize_samples, sizeof(audio_sample_t));
+        p->mapoffset[1]   = pipeasio_mapoffset_bytes(i, 1, bsize_samples, sizeof(audio_sample_t));
         p->pw_buffer[0]   = NULL;
         p->pw_buffer[1]   = NULL;
     }
@@ -894,9 +896,8 @@ void *audio_port_get_buffer(audio_port_t *p, audio_nframes_t nframes)
     audio_client_t *c = p->client;
     if (!c || !c->memfd_map) return NULL;
 
-    /* Memfd layout: channel 0 half 0 | channel 0 half 1 | channel 1 half 0 | ...
-     * memfd_map is a float pointer, so we index in samples (not bytes). */
-    return c->memfd_map + (p->channel_idx * 2 + c->current_half) * c->buffer_size;
+    return c->memfd_map + pipeasio_port_buffer_offset_samples(
+        p->channel_idx, c->current_half, c->buffer_size);
 }
 
 const char *audio_port_name(const audio_port_t *p) { return p ? p->name : NULL; }
