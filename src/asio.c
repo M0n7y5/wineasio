@@ -1346,8 +1346,12 @@ static inline int jack_process_callback(audio_nframes_t nframes, void *arg)
     if (This->host_driver_state != Running)
     {
         for (i = 0; i < This->host_active_outputs; i++)
-            memset(audio_port_get_buffer(This->output_channel[i].port, nframes),
-                   0, sizeof (audio_sample_t) * nframes);
+        {
+            audio_sample_t *dst =
+                audio_port_get_buffer(This->output_channel[i].port, nframes);
+            if (dst)
+                memset(dst, 0, sizeof (audio_sample_t) * nframes);
+        }
         return 0;
     }
 
@@ -1380,9 +1384,16 @@ static inline int jack_process_callback(audio_nframes_t nframes, void *arg)
     /* copy jack to host buffers */
     for (i = 0; i < This->pipeasio_number_inputs; i++)
         if (This->input_channel[i].active)
-            memcpy (&This->input_channel[i].audio_buffer[nframes * This->host_buffer_index],
-                    audio_port_get_buffer(This->input_channel[i].port, nframes),
-                    sizeof (audio_sample_t) * nframes);
+        {
+            audio_sample_t *src =
+                audio_port_get_buffer(This->input_channel[i].port, nframes);
+            audio_sample_t *dst =
+                &This->input_channel[i].audio_buffer[nframes * This->host_buffer_index];
+            if (src)
+                memcpy(dst, src, sizeof (audio_sample_t) * nframes);
+            else
+                memset(dst, 0, sizeof (audio_sample_t) * nframes);
+        }
 
     if (This->host_num_samples.lo > ULONG_MAX - nframes)
         This->host_num_samples.hi++;
@@ -1432,9 +1443,14 @@ static inline int jack_process_callback(audio_nframes_t nframes, void *arg)
     /* copy host to jack buffers */
     for (i = 0; i < This->pipeasio_number_outputs; i++)
         if (This->output_channel[i].active)
-            memcpy(audio_port_get_buffer(This->output_channel[i].port, nframes),
-                    &This->output_channel[i].audio_buffer[nframes * This->host_buffer_index],
-                    sizeof (audio_sample_t) * nframes);
+        {
+            audio_sample_t *dst =
+                audio_port_get_buffer(This->output_channel[i].port, nframes);
+            if (dst)
+                memcpy(dst,
+                       &This->output_channel[i].audio_buffer[nframes * This->host_buffer_index],
+                       sizeof (audio_sample_t) * nframes);
+        }
 
     /* switch host buffer */
     This->host_buffer_index = This->host_buffer_index ? 0 : 1;
