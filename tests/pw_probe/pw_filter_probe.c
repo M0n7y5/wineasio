@@ -2,7 +2,7 @@
  * pw_filter_probe.c — PipeWire-contract conformance test for PipeASIO.
  *
  * This replicates src/audio.c's PipeWire setup (custom spa_thread_utils,
- * pw_filter with memfd-backed DSP ports, FORCE_QUANTUM/RATE) WITHOUT Wine
+ * pw_filter with MAP_BUFFERS DSP ports, FORCE_QUANTUM/RATE) WITHOUT Wine
  * or an ASIO host, so the contract the driver depends on can be checked
  * offline in ~1 second.  It pins the two invariants that were the root of
  * the FL Studio crash + "noise" saga:
@@ -120,14 +120,10 @@ static int spawned_by_us(pid_t tid)
 struct probe_port {
     enum pw_direction dir;
     void             *fp;             /* pw_filter port */
-    size_t            mapoffset[2];
     struct pw_buffer *buf[2];
     int               live_buffers;   /* current (add - remove) */
 };
 struct engine {
-    int                  memfd;
-    float               *map;
-    size_t               bytes;
     struct probe_port    ports[N_PORTS];
     atomic_int           cycles;
     pid_t                process_tid;
@@ -144,18 +140,12 @@ static void on_io_changed(void *u, void *pd, uint32_t id, void *area, uint32_t s
 }
 static void on_add_buffer(void *u, void *pd, struct pw_buffer *b)
 {
-    struct engine *e = u;
+    (void)u;
     struct probe_port *p = *(struct probe_port **)pd;
     int half = p->buf[0] ? 1 : 0;
     if (p->buf[half]) return;
     p->buf[half] = b;
     p->live_buffers++;
-    struct spa_data *d = &b->buffer->datas[0];
-    d->type      = SPA_DATA_MemFd;
-    d->flags     = SPA_DATA_FLAG_READWRITE | SPA_DATA_FLAG_MAPPABLE;
-    d->fd        = e->memfd;
-    d->mapoffset = p->mapoffset[half];
-    d->maxsize   = BSIZE * SAMPLE_SZ;
 }
 static void on_remove_buffer(void *u, void *pd, struct pw_buffer *b)
 {
@@ -175,11 +165,13 @@ static void on_process(void *u, struct spa_io_position *pos)
     for (uint32_t i = 0; i < N_PORTS; i++) {
         struct pw_buffer *b = pw_filter_dequeue_buffer(e->ports[i].fp);
         if (!b) continue;
-        /* write silence so the test never blasts audio if linked */
-        memset(e->map + (size_t)i * 2 * BSIZE, 0, 2 * BSIZE * SAMPLE_SZ);
         struct spa_data *d = &b->buffer->datas[0];
+        uint32_t bytes = (pos ? pos->clock.duration : BSIZE) * SAMPLE_SZ;
+        /* MAP_BUFFERS: datas[0].data is the mmap'd shared buffer the daemon
+         * reads.  Write silence so the test never blasts audio if linked. */
+        if (d->data) memset(d->data, 0, bytes);
         d->chunk->offset = 0;
-        d->chunk->size   = (pos ? pos->clock.duration : BSIZE) * SAMPLE_SZ;
+        d->chunk->size   = bytes;
         d->chunk->stride = SAMPLE_SZ;
         d->chunk->flags  = 0;
         pw_filter_queue_buffer(e->ports[i].fp, b);
@@ -206,7 +198,6 @@ int main(int argc, char **argv)
     pw_init(NULL, NULL);
     struct engine e;
     memset(&e, 0, sizeof e);
-    e.memfd = -1;
 
     struct pw_thread_loop *tl = pw_thread_loop_new("pw_probe", NULL);
     struct pw_context     *ctx = pw_context_new(pw_thread_loop_get_loop(tl), NULL, 0);
@@ -229,18 +220,8 @@ int main(int argc, char **argv)
     }
     pw_thread_loop_unlock(tl);
 
-    e.bytes = (size_t)N_PORTS * 2 * BSIZE * SAMPLE_SZ;
-    e.memfd = memfd_create("pw_probe", MFD_CLOEXEC);
-    if (e.memfd < 0 || ftruncate(e.memfd, (off_t)e.bytes) < 0) {
-        fprintf(stderr, "[pw_probe] SKIP: memfd setup failed\n");
-        return 77;
-    }
-    e.map = mmap(NULL, e.bytes, PROT_READ | PROT_WRITE, MAP_SHARED, e.memfd, 0);
-    for (uint32_t i = 0; i < N_PORTS; i++) {
+    for (uint32_t i = 0; i < N_PORTS; i++)
         e.ports[i].dir = PW_DIRECTION_OUTPUT;
-        e.ports[i].mapoffset[0] = ((size_t)i * 2 + 0) * BSIZE * SAMPLE_SZ;
-        e.ports[i].mapoffset[1] = ((size_t)i * 2 + 1) * BSIZE * SAMPLE_SZ;
-    }
 
     struct pw_properties *fprops = pw_properties_new(
         PW_KEY_NODE_NAME, "pw_probe", PW_KEY_MEDIA_TYPE, "Audio",
@@ -270,7 +251,7 @@ int main(int argc, char **argv)
                 SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int(1 << SPA_DATA_MemFd)),
         };
         e.ports[i].fp = pw_filter_add_port(filter, e.ports[i].dir,
-            PW_FILTER_PORT_FLAG_ALLOC_BUFFERS, sizeof(struct probe_port *),
+            PW_FILTER_PORT_FLAG_MAP_BUFFERS, sizeof(struct probe_port *),
             pp, params, 1);
         *(struct probe_port **)e.ports[i].fp = &e.ports[i];
     }
@@ -314,8 +295,6 @@ int main(int argc, char **argv)
     pw_thread_loop_lock(tl);
     pw_filter_destroy(filter);
     pw_thread_loop_unlock(tl);
-    if (e.map) munmap(e.map, e.bytes);
-    if (e.memfd >= 0) close(e.memfd);
     pw_thread_loop_lock(tl);
     pw_core_disconnect(core);
     pw_thread_loop_unlock(tl);
