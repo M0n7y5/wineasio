@@ -467,7 +467,17 @@ HIDDEN LONG STDMETHODCALLTYPE Init(LPPIPEASIO iface, void *sysRef)
     int             i;
 
     This->sys_ref = sysRef;
-    mlockall(MCL_FUTURE);
+    /* Do NOT mlockall(MCL_FUTURE) here.  Under Wine it forces every
+     * subsequent mmap to lock its pages under RLIMIT_MEMLOCK; win32u
+     * maps a fresh "session" shared-memory block per batch of USER
+     * objects, so when the host (FL Studio) registers many plugin
+     * window classes during project load, that mmap hits the memlock
+     * limit and NtUserRegisterClassExWOW fails with "Failed to get
+     * shared session object" — recursing until the GUI thread's 1 MB
+     * stack overflows and the host crashes.  The lock is process-global
+     * and never reversed, so it persists even after the host switches
+     * back to another ASIO driver (only a fresh process recovers).
+     * pwasio locks nothing; PipeWire's rt module owns RT paging. */
     configure_driver(This);
 
     if (!(This->jack_client = audio_open(This->jack_client_name, jack_options, &jack_status)))
