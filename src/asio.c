@@ -1040,20 +1040,20 @@ HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPPIPEASIO iface, BufferInformation 
         }
         else
         {
-            if (This->host_current_buffersize == bufferSize)
+            /* Always push the negotiated size to the backend before
+             * audio_activate forces the PipeWire quantum.  host_current_
+             * buffersize is seeded to the preferred size at Init while the
+             * backend defaults to AUDIO_DEFAULT_BUFFER_SIZE, so an equal
+             * asio-side cache does NOT imply an equal backend quantum:
+             * skipping the sync left the graph at 1024 while the host filled
+             * `bufferSize` frames per cycle — slow, pitched-down output. */
+            This->host_current_buffersize = bufferSize;
+            if (!audio_set_buffer_size(This->audio_client, bufferSize))
             {
-                TRACE("Buffer size already set to %d\n", (int)This->host_current_buffersize);
+                WARN("Unable to set buffersize to %d\n", (int)bufferSize);
+                return -999;
             }
-            else
-            {
-                This->host_current_buffersize = bufferSize;
-                if (!audio_set_buffer_size(This->audio_client, This->host_current_buffersize))
-                {
-                    WARN("Unable to set buffersize to %d\n", (int)This->host_current_buffersize);
-                    return -999;
-                }
-                TRACE("Buffer size changed to %d\n", (int)This->host_current_buffersize);
-            }
+            TRACE("Buffer size set to %d\n", (int)bufferSize);
         }
     }
 
