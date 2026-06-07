@@ -1017,6 +1017,16 @@ HIDDEN LONG STDMETHODCALLTYPE CreateBuffers(LPPIPEASIO iface, BufferInformation 
     {
         if (This->host_current_buffersize != bufferSize)
             return -997;
+        /* Sync the backend buffer size so audio_activate forces the matching
+         * PipeWire quantum.  Without this the graph keeps its default quantum
+         * while the host fills only bufferSize frames per cycle — the daemon
+         * then plays buffer-worth of real audio stretched across a larger
+         * quantum, i.e. slow, pitched-down output. */
+        if (!audio_set_buffer_size(This->audio_client, bufferSize))
+        {
+            WARN("Unable to set buffersize to %d\n", (int)bufferSize);
+            return -999;
+        }
         TRACE("Buffersize fixed at %d\n", (int)This->host_current_buffersize);
     }
     else
