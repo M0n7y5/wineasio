@@ -13,45 +13,47 @@ class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
-class QProgressBar;
+class LoadHistogram;
 class QSpinBox;
 
-class SettingsDialog : public QDialog {
+class SettingsDialog : public QDialog
+{
     Q_OBJECT
-public:
+  public:
     explicit SettingsDialog(QWidget *parent = nullptr);
 
-private slots:
-    void onAccept();
+  private slots:
+    void onApply();
     void onRestoreDefaults();
     void onMonitorUpdated(const NodeStats &stats);
 
-private:
+  private:
     QWidget *buildSettingsTab();
     QWidget *buildMonitorTab();
-    void applyConfig(const struct pipeasio_config &c);
-    void updateLatencyLabel();
-    int currentBufferSize() const;
-    int currentSampleRate() const;
+    void     applyConfig(const struct pipeasio_config &c);
+    void     updateLatencyLabel();
+    int      currentBufferSize() const;
+    int      currentSampleRate() const;
 
     /* Settings widgets */
-    QSpinBox *m_inputs = nullptr;
-    QSpinBox *m_outputs = nullptr;
-    QComboBox *m_bufferSize = nullptr;
-    QLabel *m_latency = nullptr;
-    QComboBox *m_sampleRate = nullptr;
-    QComboBox *m_outputDevice = nullptr;
-    QComboBox *m_inputDevice = nullptr;
-    QCheckBox *m_autoConnect = nullptr;
-    QCheckBox *m_fixedBuffer = nullptr;
-    QLineEdit *m_nodeName = nullptr;
+    QSpinBox  *m_inputs            = nullptr;
+    QSpinBox  *m_outputs           = nullptr;
+    QComboBox *m_bufferSize        = nullptr;
+    QLabel    *m_latency           = nullptr;
+    QComboBox *m_sampleRate        = nullptr;
+    QComboBox *m_outputDevice      = nullptr;
+    QComboBox *m_inputDevice       = nullptr;
+    QCheckBox *m_autoConnect       = nullptr;
+    QCheckBox *m_fixedBuffer       = nullptr;
+    QCheckBox *m_followDeviceClock = nullptr;
+    QLineEdit *m_nodeName          = nullptr;
 
     /* Monitor widgets */
-    QLabel *m_monQuantum = nullptr;
-    QLabel *m_monRate = nullptr;
-    QProgressBar *m_monLoad = nullptr;
-    QLabel *m_monXruns = nullptr;
-    QLabel *m_monState = nullptr;
+    QLabel        *m_monQuantum = nullptr;
+    QLabel        *m_monRate    = nullptr;
+    LoadHistogram *m_monLoad    = nullptr;
+    QLabel        *m_monXruns   = nullptr;
+    QLabel        *m_monState   = nullptr;
 
     PipeWireMonitor m_monitor;
 };

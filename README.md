@@ -154,7 +154,7 @@ quantum is locked to the ASIO host's negotiated buffer size via
 
 PipeASIO is configured by a flat INI file at
 `$XDG_CONFIG_HOME/pipeasio/config.ini` (fallback `~/.config/pipeasio/config.ini`).
-The driver reads it natively at startup; the settings panel writes it.  Every
+The driver reads it natively at startup and re-reads it while running, so saving in the settings panel applies changes within about a second without reselecting the driver or restarting the host.  Every
 option can also be overridden by an environment variable.  A missing file means
 built-in defaults, and unknown keys are ignored.  The file has a single
 `[pipeasio]` section:
@@ -170,7 +170,8 @@ patchbay.  Env: `PIPEASIO_CONNECT_TO_HARDWARE` (`on`/`off`).
 
 #### output_device / input_device
 The PipeWire `node.name` of the sink (output) and source (input) to
-auto-connect to.  Empty (the default) means the first available device.
+auto-connect to.  Empty (the default) follows the PipeWire default sink/source,
+re-resolved each time the driver (re)connects.
 Env: `PIPEASIO_OUTPUT_DEVICE`, `PIPEASIO_INPUT_DEVICE`.
 
 #### sample_rate
@@ -182,6 +183,17 @@ Defaults to 1: the buffer size is controlled by PipeWire and the ASIO host
 cannot change it.  Set to 0 to let the host change PipeWire's quantum (via
 `PW_KEY_NODE_FORCE_QUANTUM`) in `CreateBuffers()`.
 Env: `PIPEASIO_FIXED_BUFFERSIZE` (`on`/`off`).
+
+#### follow_device_clock
+Defaults to 0 (off): the driver pins the PipeWire graph quantum
+(`PW_KEY_NODE_FORCE_QUANTUM`) to the host's buffer size and runs as its own
+low-latency clock master — correct for wired devices.  Set to 1 to make the
+driver a *follower* instead: it drops `FORCE_QUANTUM` so the target device
+drives the cycle.  This is required for Bluetooth sinks, whose clock is the
+radio link and cannot be slaved to the host — otherwise PipeWire silently drops
+the links and you get no sound.  The buffer size is then dictated by the device
+(the driver settles to the device's quantum after one automatic reset), so
+latency is higher.  Env: `PIPEASIO_FOLLOW_DEVICE_CLOCK` (`on`/`off`).
 
 #### buffer_size
 The preferred size returned by `GetBufferSize()` (see the ASIO docs).  Must be
@@ -199,6 +211,13 @@ program name).  Env: `PIPEASIO_CLIENT_NAME`.
 ### CHANGE LOG
 
 #### Unreleased
+* 08-JUN-2026: The Monitor tab's DSP load is now a rolling history graph (green / amber / red bars by level, current % shown, frozen and dimmed when idle) instead of a single bar, so you can see load trends and spikes over time
+* 08-JUN-2026: Fix the Monitor tab never showing live values — it failed to recognise the driver's own PipeWire node (the `pipeasio.node` marker is serialised by `pw-dump` as a JSON number, not a string), then read `pw-top`'s all-zero baseline sample instead of the measured iteration and choked on locale comma decimals. Quantum / sample rate / DSP load / xruns / state now populate while audio plays
+* 08-JUN-2026: Add explanatory tooltips to every Settings and Monitor field
+* 07-JUN-2026: Add a "Follow device clock" option (`follow_device_clock`, off by default): makes the driver follow the target device's clock instead of forcing the graph quantum, so output to a Bluetooth sink (whose clock can't be slaved) works — at the cost of the device-dictated buffer size and latency
+* 07-JUN-2026: "Follow default" output/input now connects to the *actual* PipeWire default sink/source (read from the "default" metadata) instead of the first device discovered — fixes audio going to the wrong device when the system default is e.g. Bluetooth headphones
+* 07-JUN-2026: The settings panel's "OK" button is now "Apply": it saves without closing the window, so you can adjust settings and hear each change take effect live
+* 07-JUN-2026: Settings saved in the panel now apply to a running driver automatically — the driver watches `config.ini` and asks the host to re-initialize on change (no more reselect/restart), and the panel writes the file atomically so a half-written config is never read
 * 07-JUN-2026: Fix slow / pitched-down playback at any buffer size other than the backend default — `CreateBuffers()` now always syncs the negotiated size to the PipeWire quantum
 * 07-JUN-2026: The in-app ASIO "control panel" button now shows a message directing you to run `pipeasio-settings` on the host (the Qt panel can't run inside the Wine/Proton container) instead of silently failing
 * 07-JUN-2026: Monitor tab auto-discovers the driver's PipeWire node (the host names it after its own executable), via a `pipeasio.node` marker

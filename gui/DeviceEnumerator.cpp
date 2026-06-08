@@ -11,34 +11,37 @@
 #include <QJsonValue>
 #include <QProcess>
 
-namespace DeviceEnumerator {
+namespace DeviceEnumerator
+{
 
-QList<Device> parsePwDump(const QByteArray &json)
+QList<Device>
+parsePwDump(const QByteArray &json)
 {
     QList<Device> devices;
 
-    QJsonParseError err {};
+    QJsonParseError     err{};
     const QJsonDocument doc = QJsonDocument::fromJson(json, &err);
     if (err.error != QJsonParseError::NoError || !doc.isArray())
         return devices;
 
     const QJsonArray arr = doc.array();
-    for (const QJsonValue &v : arr) {
+    for (const QJsonValue &v : arr)
+    {
         if (!v.isObject())
             continue;
         const QJsonObject obj = v.toObject();
-        if (obj.value(QStringLiteral("type")).toString() !=
-            QLatin1String("PipeWire:Interface:Node"))
+        if (obj.value(QStringLiteral("type")).toString()
+            != QLatin1String("PipeWire:Interface:Node"))
             continue;
 
-        const QJsonObject props =
-            obj.value(QStringLiteral("info")).toObject()
-               .value(QStringLiteral("props")).toObject();
+        const QJsonObject props = obj.value(QStringLiteral("info"))
+                                          .toObject()
+                                          .value(QStringLiteral("props"))
+                                          .toObject();
 
-        const QString mediaClass =
-            props.value(QStringLiteral("media.class")).toString();
-        const bool isSink = (mediaClass == QLatin1String("Audio/Sink"));
-        const bool isSource = (mediaClass == QLatin1String("Audio/Source"));
+        const QString mediaClass = props.value(QStringLiteral("media.class")).toString();
+        const bool    isSink     = (mediaClass == QLatin1String("Audio/Sink"));
+        const bool    isSource   = (mediaClass == QLatin1String("Audio/Source"));
         if (!isSink && !isSource)
             continue;
 
@@ -46,55 +49,61 @@ QList<Device> parsePwDump(const QByteArray &json)
         if (name.isEmpty())
             continue;
 
-        QString description =
-            props.value(QStringLiteral("node.description")).toString();
+        QString description = props.value(QStringLiteral("node.description")).toString();
         if (description.isEmpty())
             description = props.value(QStringLiteral("node.nick")).toString();
         if (description.isEmpty())
             description = name;
 
         Device d;
-        d.name = name;
+        d.name        = name;
         d.description = description;
-        d.isSink = isSink;
+        d.isSink      = isSink;
         devices.append(d);
     }
 
     return devices;
 }
 
-QString findOwnNode(const QByteArray &json)
+QString
+findOwnNode(const QByteArray &json)
 {
-    QJsonParseError err {};
+    QJsonParseError     err{};
     const QJsonDocument doc = QJsonDocument::fromJson(json, &err);
     if (err.error != QJsonParseError::NoError || !doc.isArray())
         return {};
 
     const QJsonArray arr = doc.array();
-    for (const QJsonValue &v : arr) {
+    for (const QJsonValue &v : arr)
+    {
         if (!v.isObject())
             continue;
         const QJsonObject obj = v.toObject();
-        if (obj.value(QStringLiteral("type")).toString() !=
-            QLatin1String("PipeWire:Interface:Node"))
+        if (obj.value(QStringLiteral("type")).toString()
+            != QLatin1String("PipeWire:Interface:Node"))
             continue;
-        const QJsonObject props =
-            obj.value(QStringLiteral("info")).toObject()
-               .value(QStringLiteral("props")).toObject();
-        if (props.value(QStringLiteral("pipeasio.node")).toString() ==
-            QLatin1String("1"))
+        const QJsonObject props = obj.value(QStringLiteral("info"))
+                                          .toObject()
+                                          .value(QStringLiteral("props"))
+                                          .toObject();
+        /* The driver sets pipeasio.node="1" (a string), but pw-dump serialises
+         * that numeric-looking value as a JSON number, so accept both forms. */
+        const QJsonValue marker = props.value(QStringLiteral("pipeasio.node"));
+        if (marker.toString() == QLatin1String("1") || marker.toInt() == 1)
             return props.value(QStringLiteral("node.name")).toString();
     }
     return {};
 }
 
-QByteArray runPwDump()
+QByteArray
+runPwDump()
 {
     QProcess proc;
     proc.start(QStringLiteral("pw-dump"), QStringList());
     if (!proc.waitForStarted(3000))
         return {};
-    if (!proc.waitForFinished(5000)) {
+    if (!proc.waitForFinished(5000))
+    {
         proc.kill();
         proc.waitForFinished(1000);
         return {};
@@ -102,7 +111,8 @@ QByteArray runPwDump()
     return proc.readAllStandardOutput();
 }
 
-QList<Device> enumerate()
+QList<Device>
+enumerate()
 {
     return parsePwDump(runPwDump());
 }
