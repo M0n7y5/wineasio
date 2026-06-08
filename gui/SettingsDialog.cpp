@@ -48,7 +48,7 @@ const SampleRateItem kSampleRates[] = {
 
 SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent)
 {
-    setWindowTitle(QStringLiteral("PipeASIO Settings"));
+    setWindowTitle(QStringLiteral("PipeASIO Settings — " PIPEASIO_VERSION));
 
     auto *tabs = new QTabWidget(this);
     tabs->addTab(buildSettingsTab(), QStringLiteral("Settings"));

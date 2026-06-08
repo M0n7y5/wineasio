@@ -20,6 +20,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+/* --- Product version (driver log + settings-panel title) ------------------ */
+#define PIPEASIO_VERSION "1.0.0-rc1"
+
 /* --- File location (relative to $XDG_CONFIG_HOME, else $HOME/.config) ----- */
 #define PIPEASIO_CONFIG_DIR "pipeasio"
 #define PIPEASIO_CONFIG_FILE "config.ini"

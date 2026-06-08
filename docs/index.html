@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PipeASIO — ASIO driver for Wine, native to PipeWire</title>
+<meta name="description" content="PipeASIO is an ASIO driver for Wine that talks to PipeWire directly — no libjack runtime dependency. Built so FL Studio and other ASIO hosts run under Proton / Steam Runtime.">
+<meta property="og:title" content="PipeASIO">
+<meta property="og:description" content="An ASIO driver for Wine that talks to PipeWire directly — no libjack. Runs inside Proton / steamrt4.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --bg: #0b0f14;
+    --bg-soft: #111821;
+    --surface: #131c26;
+    --border: #21303f;
+    --text: #e6edf3;
+    --muted: #93a1b0;
+    --accent: #2dd4bf;
+    --accent-2: #38bdf8;
+    --code-bg: #0e151d;
+    --radius: 14px;
+    --maxw: 960px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre, .mono { font-family: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(11,15,20,.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+  .brand { font-weight: 700; letter-spacing: .2px; font-size: 18px; }
+  .brand .dot { color: var(--accent); }
+  .nav-links { display: flex; gap: 22px; align-items: center; }
+  .nav-links a { color: var(--muted); font-size: 15px; }
+  .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+  /* Hero */
+  .hero { position: relative; overflow: hidden; padding: 88px 0 72px; text-align: center; }
+  .hero::before {
+    content: ""; position: absolute; inset: -40% 0 auto 0; height: 460px;
+    background: radial-gradient(60% 60% at 50% 0%, rgba(45,212,191,.16), rgba(56,189,248,.05) 45%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 { font-size: clamp(38px, 7vw, 66px); margin: 0 0 6px; letter-spacing: -1.2px; }
+  .hero .tag { font-size: clamp(17px, 2.6vw, 22px); color: var(--muted); max-width: 680px; margin: 0 auto 14px; }
+  .hero .tag strong { color: var(--text); }
+  .badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 22px 0 30px; }
+  .pill {
+    font-size: 12.5px; padding: 5px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+  }
+  .pill b { color: var(--accent); font-weight: 600; }
+  .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 15px;
+    border: 1px solid var(--border); transition: transform .08s ease, border-color .15s ease, background .15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); text-decoration: none; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #062a26; border-color: transparent; }
+  .btn-ghost { color: var(--text); background: var(--surface); }
+  .btn-ghost:hover { border-color: var(--accent); }
+
+  /* Sections */
+  section { padding: 56px 0; border-top: 1px solid var(--border); }
+  h2 { font-size: 26px; margin: 0 0 8px; letter-spacing: -.4px; }
+  h2 + .lead { color: var(--muted); margin: 0 0 28px; max-width: 720px; }
+  p { color: #c7d2dd; }
+
+  .note {
+    border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    background: var(--bg-soft); border-radius: 10px; padding: 14px 18px; color: var(--muted); font-size: 15px;
+  }
+
+  /* Features */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(248px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; transition: border-color .15s ease, transform .08s ease;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .card h3::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); margin-right: 9px; vertical-align: middle; }
+  .card p { margin: 0; font-size: 14.5px; color: var(--muted); }
+
+  /* Screenshot */
+  .shot { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg-soft); }
+  .shot img { display: block; width: 100%; height: auto; }
+  figcaption { color: var(--muted); font-size: 13.5px; text-align: center; margin-top: 12px; }
+
+  /* Code */
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; overflow-x: auto; font-size: 14px; line-height: 1.7; color: #d6e2ee;
+  }
+  pre .c { color: var(--muted); }
+  pre .p { color: var(--accent); }
+  .step { color: var(--muted); font-size: 14px; margin: 26px 0 8px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; }
+  .step:first-child { margin-top: 0; }
+
+  /* Config table */
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .3px; }
+  td code { color: var(--accent); background: var(--code-bg); padding: 2px 6px; border-radius: 5px; font-size: 13px; }
+  td.d { color: var(--muted); }
+
+  /* Footer */
+  footer { border-top: 1px solid var(--border); padding: 40px 0 56px; color: var(--muted); font-size: 14px; }
+  .foot-row { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .foot-links { display: flex; gap: 20px; flex-wrap: wrap; }
+  @media (max-width: 600px) { .nav-links .hide-sm { display: none; } .hero { padding: 60px 0 48px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <span class="brand">Pipe<span class="dot">ASIO</span></span>
+    <nav class="nav-links">
+      <a href="#why" class="hide-sm">Why</a>
+      <a href="#features" class="hide-sm">Features</a>
+      <a href="#quickstart">Get&nbsp;started</a>
+      <a href="https://github.com/M0n7y5/pipeasio">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero" style="border-top:none">
+    <div class="wrap">
+      <h1>PipeASIO</h1>
+      <p class="tag">An <strong>ASIO driver for Wine</strong> that talks to <strong>PipeWire</strong> directly &mdash; no <code>libjack.so.0</code> runtime dependency.</p>
+      <div class="badges">
+        <span class="pill"><b>v1.0.0-rc1</b></span>
+        <span class="pill">x86_64</span>
+        <span class="pill">PipeWire&nbsp;1.6+</span>
+        <span class="pill">Wine&nbsp;10+</span>
+        <span class="pill">LGPL-2.1 · GPL-2.0</span>
+      </div>
+      <div class="cta">
+        <a class="btn btn-primary" href="#quickstart">Get started</a>
+        <a class="btn btn-ghost" href="https://github.com/M0n7y5/pipeasio">View on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="why">
+    <div class="wrap">
+      <h2>Why PipeASIO?</h2>
+      <p class="lead">A fork of <a href="https://github.com/wineasio/wineasio">WineASIO</a>, rebuilt to be PipeWire-native so it loads where upstream can't.</p>
+      <p>ASIO is the low-latency audio driver model Windows DAWs use &mdash; FL&nbsp;Studio, Ableton Live, Reaper. Running them under Wine/Proton means the host needs an ASIO driver on the Linux side.</p>
+      <p>Upstream WineASIO links against JACK and <code>dlopen</code>s <code>libjack.so.0</code> at runtime. Inside the Steam Runtime <code>steamrt4</code> container that Proton uses, that library isn't present &mdash; only <code>libpipewire-0.3</code> is &mdash; so upstream segfaults on load. PipeASIO drops the JACK bridge entirely and speaks to PipeWire directly, so it loads cleanly inside Proton / Faugus and on any modern PipeWire desktop.</p>
+      <p>It also carries its <strong>own COM identity</strong> (CLSID <code>{2D3CA9E2-…}</code>, registered under <code>HKCU\Software\ASIO\PipeASIO</code>, DLL <code>pipeasio64.dll</code>), so it installs <strong>alongside</strong> WineASIO without either overriding the other &mdash; hosts see two separate drivers.</p>
+    </div>
+  </section>
+
+  <section id="features" style="background:var(--bg-soft)">
+    <div class="wrap">
+      <h2>What you get</h2>
+      <p class="lead">A focused, modern ASIO ↔ PipeWire bridge with a native settings panel.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>PipeWire-native</h3>
+          <p>Talks to <code>libpipewire-0.3</code> directly via a <code>pw_filter</code> DSP node &mdash; no JACK, no <code>libjack.so.0</code> at runtime.</p>
+        </div>
+        <div class="card">
+          <h3>Runs under Proton</h3>
+          <p>Loads inside the Steam Runtime <code>steamrt4</code> container (FL&nbsp;Studio under Faugus / Proton-CachyOS) via a host <code>WINEDLLPATH</code>.</p>
+        </div>
+        <div class="card">
+          <h3>Sample-accurate clock</h3>
+          <p>Locks the PipeWire graph quantum to the host's negotiated buffer size with <code>PW_KEY_NODE_FORCE_QUANTUM</code> for tight, glitch-free timing.</p>
+        </div>
+        <div class="card">
+          <h3>Qt6 settings panel</h3>
+          <p>A native <code>pipeasio-settings</code> GUI: channels, buffer size, device routing, plus a live <strong>Monitor</strong> tab with quantum, rate, xruns and a DSP-load graph.</p>
+        </div>
+        <div class="card">
+          <h3>Bluetooth-friendly</h3>
+          <p>A <em>follow-device-clock</em> mode lets the target device drive the cycle &mdash; required for Bluetooth sinks whose clock is the radio link.</p>
+        </div>
+        <div class="card">
+          <h3>Live config reload</h3>
+          <p>The driver re-reads its INI while running, so saving in the panel applies within about a second &mdash; no reselecting the driver or restarting the host.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screenshot">
+    <div class="wrap">
+      <h2>The settings panel</h2>
+      <p class="lead">Configure channels and routing, then watch the graph live.</p>
+      <figure style="margin:0">
+        <div class="shot"><img src="screenshot.png" alt="PipeASIO settings panel" loading="lazy"></div>
+        <figcaption>pipeasio-settings &mdash; Settings and live Monitor tabs.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="quickstart" style="background:var(--bg-soft)">
+    <div class="wrap">
+      <h2>Quick start</h2>
+      <p class="lead">x86_64 only. Needs CMake&nbsp;≥&nbsp;3.20, the Wine SDK, <code>pkg-config</code>, <code>libpipewire-0.3-dev</code>, and (for the panel) <code>qt6-base-dev</code>.</p>
+
+      <div class="step">1 · Build</div>
+<pre><span class="c"># clone and build (Release)</span>
+git clone https://github.com/M0n7y5/pipeasio.git &amp;&amp; cd pipeasio
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build</pre>
+
+      <div class="step">2 · Install</div>
+<pre><span class="c"># user-local — required for Proton / Faugus / Steam</span>
+cmake --install build --prefix <span class="p">"$HOME/.local"</span>
+
+<span class="c"># …or system-wide for a normal Wine setup</span>
+sudo cmake --install build --prefix /usr</pre>
+
+      <div class="step">3 · Register into a wineprefix</div>
+<pre>env WINEPREFIX=<span class="p">"$HOME/Faugus/&lt;game&gt;"</span> pipeasio-register</pre>
+
+      <div class="step">4 · Proton / Steam Runtime</div>
+      <p>Proton runs Wine in a container that can't see <code>/usr/lib/wine</code>, so install under <code>$HOME</code> (above) and point Proton's Wine at the ELF half by setting this in your launcher's per-game environment:</p>
+<pre>WINEDLLPATH=/home/&lt;you&gt;/.local/lib/wine</pre>
+      <p class="note">Use the absolute path (Faugus doesn't expand <code>~</code>). Then pick <strong>PipeASIO</strong> as the ASIO device inside your host. Full details &mdash; including the config keys and their environment overrides &mdash; are in the <a href="https://github.com/M0n7y5/pipeasio#readme">README</a>.</p>
+    </div>
+  </section>
+
+  <section id="config">
+    <div class="wrap">
+      <h2>Configuration</h2>
+      <p class="lead">A flat INI at <code>~/.config/pipeasio/config.ini</code> (written by the panel); every key also has an environment-variable override. Defaults work out of the box.</p>
+      <table>
+        <thead><tr><th>Key</th><th>Default</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>inputs</code> / <code>outputs</code></td><td class="d">2 / 2</td><td>Number of PipeWire ports the driver opens.</td></tr>
+          <tr><td><code>buffer_size</code></td><td class="d">1024</td><td>Preferred ASIO buffer size (power of two, 16–8192).</td></tr>
+          <tr><td><code>fixed_buffer_size</code></td><td class="d">on</td><td>Lock the size, or let the host change PipeWire's quantum.</td></tr>
+          <tr><td><code>sample_rate</code></td><td class="d">follow</td><td><code>0</code> follows the graph; non-zero pins the rate.</td></tr>
+          <tr><td><code>auto_connect</code></td><td class="d">on</td><td>Auto-wire channels to a hardware device on start.</td></tr>
+          <tr><td><code>follow_device_clock</code></td><td class="d">off</td><td>Let the target device drive the cycle (needed for Bluetooth).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-row">
+    <div>
+      <strong>Pipe<span style="color:var(--accent)">ASIO</span></strong> &mdash; a fork of <a href="https://github.com/wineasio/wineasio">WineASIO</a>.<br>
+      Library under LGPL-2.1+, settings panel under GPL-2.0+.
+    </div>
+    <div class="foot-links">
+      <a href="https://github.com/M0n7y5/pipeasio">GitHub</a>
+      <a href="https://github.com/M0n7y5/pipeasio#readme">README</a>
+      <a href="https://github.com/M0n7y5/pipeasio/blob/master/COPYING.LIB">License</a>
+      <a href="https://pipewire.org">PipeWire</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -241,7 +241,7 @@ that applies to it.
 
 ### CHANGE LOG
 
-#### Unreleased
+#### 1.0.0-rc1
 * 08-JUN-2026: Flush subnormal floats to zero (FTZ/DAZ) on the audio thread, avoiding rare multi-hundred-cycle CPU stalls — and the dropouts they cause — when the host's DSP produces denormals
 * 08-JUN-2026: Derive the ASIO host timestamp (`systemTime`) from the PipeWire graph clock instead of the system tick count — a monotonic, audio-domain clock, and one fewer call on the audio path
 * 08-JUN-2026: Lower the default channel count to 2 in / 2 out (was 16 / 16) so a fresh install opens a smaller PipeWire graph; raise inputs/outputs in the settings panel as needed

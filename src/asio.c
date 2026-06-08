@@ -743,7 +743,7 @@ Init(LPPIPEASIO iface, void *sysRef)
     }
 
     This->host_driver_state = Initialized;
-    TRACE("PipeASIO 0.%.1f initialized\n", (float)This->host_version / 10);
+    TRACE("PipeASIO " PIPEASIO_VERSION " initialized\n");
     return 1;
 }
 
@@ -1698,7 +1698,7 @@ configure_driver(IPipeASIOImpl *This)
     This->host_driver_state       = Loaded;
     This->host_sample_rate        = 0;
     This->host_time_info_mode     = FALSE;
-    This->host_version            = 92;
+    This->host_version            = 92; /* ASIO API version, not PIPEASIO_VERSION */
 
     /* Load settings from the flat INI the pipeasio-settings panel writes
      * ($XDG_CONFIG_HOME/pipeasio/config.ini).  A missing file yields defaults. */
