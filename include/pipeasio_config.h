@@ -50,6 +50,10 @@
 #define PIPEASIO_MIN_BUFFER_SIZE 16
 #define PIPEASIO_MAX_BUFFER_SIZE 8192
 
+/* Upper bound on channel counts (matches the GUI spinbox range); guards the
+ * IOChannel and callback-buffer sizing against absurd config/env values. */
+#define PIPEASIO_MAX_CHANNELS 256
+
 #define PIPEASIO_DEVICE_NAME_MAX 256
 #define PIPEASIO_NODE_NAME_MAX 256
 

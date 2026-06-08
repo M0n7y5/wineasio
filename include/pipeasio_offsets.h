@@ -85,7 +85,7 @@ static inline size_t
 pipeasio_host_callback_size_bytes(uint32_t n_in, uint32_t n_out, size_t buffer_size_samples,
                                   size_t sample_size_bytes)
 {
-    return (size_t)(n_in + n_out) * PIPEASIO_BUFFER_HALVES * buffer_size_samples
+    return ((size_t)n_in + n_out) * PIPEASIO_BUFFER_HALVES * buffer_size_samples
            * sample_size_bytes;
 }
 

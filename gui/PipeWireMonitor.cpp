@@ -144,34 +144,79 @@ void
 PipeWireMonitor::stop()
 {
     m_timer->stop();
+    if (m_proc)
+    {
+        m_proc->disconnect(this);
+        m_proc->kill();
+        m_proc->deleteLater();
+        m_proc = nullptr;
+    }
+    m_busy = false;
 }
 
 void
 PipeWireMonitor::poll()
 {
-    QProcess proc;
-    proc.start(QStringLiteral("pw-top"),
-               { QStringLiteral("-b"), QStringLiteral("-n"), QStringLiteral("2") });
-    if (!proc.waitForStarted(2000))
+    if (m_busy) /* skip overlapping ticks; the previous cycle is still running */
         return;
-    if (!proc.waitForFinished(3000))
-    {
-        proc.kill();
-        proc.waitForFinished(1000);
-        return;
-    }
-    const QByteArray out = proc.readAllStandardOutput();
+    m_busy = true;
+    startTop();
+}
 
+void
+PipeWireMonitor::startTop()
+{
+    m_proc = new QProcess(this);
+    connect(m_proc, &QProcess::finished, this, &PipeWireMonitor::onTopFinished);
+    connect(m_proc, &QProcess::errorOccurred, this, &PipeWireMonitor::onTopFinished);
+    m_proc->start(QStringLiteral("pw-top"),
+                  { QStringLiteral("-b"), QStringLiteral("-n"), QStringLiteral("2") });
+}
+
+void
+PipeWireMonitor::onTopFinished()
+{
+    if (!m_proc) /* guard the finished + errorOccurred double-fire */
+        return;
+    m_lastTop = m_proc->readAllStandardOutput();
+    m_proc->deleteLater();
+    m_proc = nullptr;
+
+    const NodeStats st = parsePwTop(m_lastTop, m_target);
     /* The host names our node after its own executable, so when no explicit
-     * node_name is configured we resolve it from the "pipeasio.node" marker
-     * the driver stamps on the filter — refreshed whenever the current target
-     * isn't present (e.g. the host (re)started since we last looked). */
-    if (m_autoDiscover && (m_target.isEmpty() || !parsePwTop(out, m_target).found))
+     * node_name is configured we resolve it from the "pipeasio.node" marker the
+     * driver stamps on the filter — refreshed whenever the current target isn't
+     * present (e.g. the host (re)started since we last looked). */
+    if (st.found || !m_autoDiscover)
     {
-        const QString name = DeviceEnumerator::findOwnNode(DeviceEnumerator::runPwDump());
-        if (!name.isEmpty())
-            m_target = name;
+        emit updated(st);
+        m_busy = false;
+        return;
     }
+    startDump();
+}
 
-    emit updated(parsePwTop(out, m_target));
+void
+PipeWireMonitor::startDump()
+{
+    m_proc = new QProcess(this);
+    connect(m_proc, &QProcess::finished, this, &PipeWireMonitor::onDumpFinished);
+    connect(m_proc, &QProcess::errorOccurred, this, &PipeWireMonitor::onDumpFinished);
+    m_proc->start(QStringLiteral("pw-dump"), QStringList());
+}
+
+void
+PipeWireMonitor::onDumpFinished()
+{
+    if (!m_proc)
+        return;
+    const QByteArray dump = m_proc->readAllStandardOutput();
+    m_proc->deleteLater();
+    m_proc = nullptr;
+
+    const QString name = DeviceEnumerator::findOwnNode(dump);
+    if (!name.isEmpty())
+        m_target = name;
+    emit updated(parsePwTop(m_lastTop, m_target));
+    m_busy = false;
 }

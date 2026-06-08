@@ -561,6 +561,9 @@ Release(LPPIPEASIO iface)
 
     TRACE("iface: %p, ref count is %u\n", iface, (unsigned)ref);
 
+    if (ref != 0)
+        return ref;
+
     if (This->host_driver_state == Running)
         Stop(iface);
     if (This->host_driver_state == Prepared)
@@ -585,16 +588,15 @@ Release(LPPIPEASIO iface)
         TRACE("%i IOChannel structures released\n",
               This->pipeasio_number_inputs + This->pipeasio_number_outputs);
 
-        audio_free(This->phys_output_ports);
-        audio_free(This->phys_input_ports);
+        audio_free_ports(This->phys_output_ports);
+        audio_free_ports(This->phys_input_ports);
         stop_config_watch(This);
         audio_close(This->audio_client);
         if (This->input_channel)
             HeapFree(GetProcessHeap(), 0, This->input_channel);
     }
     TRACE("PipeASIO terminated\n\n");
-    if (ref == 0)
-        HeapFree(GetProcessHeap(), 0, This);
+    HeapFree(GetProcessHeap(), 0, This);
     return ref;
 }
 
@@ -705,6 +707,8 @@ Init(LPPIPEASIO iface, void *sysRef)
         audio_close(This->audio_client);
         HeapFree(GetProcessHeap(), 0, This->input_channel);
         ERR("Unable to register buffer size change callback\n");
+        audio_free_ports(This->phys_input_ports);
+        audio_free_ports(This->phys_output_ports);
         return 0;
     }
 
@@ -713,6 +717,8 @@ Init(LPPIPEASIO iface, void *sysRef)
         audio_close(This->audio_client);
         HeapFree(GetProcessHeap(), 0, This->input_channel);
         ERR("Unable to register latency callback\n");
+        audio_free_ports(This->phys_input_ports);
+        audio_free_ports(This->phys_output_ports);
         return 0;
     }
 
@@ -721,6 +727,8 @@ Init(LPPIPEASIO iface, void *sysRef)
         audio_close(This->audio_client);
         HeapFree(GetProcessHeap(), 0, This->input_channel);
         ERR("Unable to register process callback\n");
+        audio_free_ports(This->phys_input_ports);
+        audio_free_ports(This->phys_output_ports);
         return 0;
     }
 
@@ -729,6 +737,8 @@ Init(LPPIPEASIO iface, void *sysRef)
         audio_close(This->audio_client);
         HeapFree(GetProcessHeap(), 0, This->input_channel);
         ERR("Unable to register sample rate change callback\n");
+        audio_free_ports(This->phys_input_ports);
+        audio_free_ports(This->phys_output_ports);
         return 0;
     }
 
@@ -1037,8 +1047,10 @@ DEFINE_THISCALL_WRAPPER(GetChannelInfo, 8)
 HIDDEN LONG STDMETHODCALLTYPE
 GetChannelInfo(LPPIPEASIO iface, void *info)
 {
-    IPipeASIOImpl *This  = (IPipeASIOImpl *)iface;
-    LONG          *linfo = (LONG *)info;
+    IPipeASIOImpl *This = (IPipeASIOImpl *)iface;
+    if (!info)
+        return -998;
+    LONG *linfo = (LONG *)info;
 
     const LONG channelNumber = *linfo++;
     const LONG isInputType   = *linfo++;
@@ -1245,7 +1257,23 @@ CreateBuffers(LPPIPEASIO iface, BufferInformation *bufferInfo, LONG numChannels,
           This->host_active_outputs);
 
     if (!audio_activate(This->audio_client))
+    {
+        for (i = 0; i < This->pipeasio_number_inputs; i++)
+        {
+            This->input_channel[i].audio_buffer = NULL;
+            This->input_channel[i].active       = false;
+        }
+        for (i = 0; i < This->pipeasio_number_outputs; i++)
+        {
+            This->output_channel[i].audio_buffer = NULL;
+            This->output_channel[i].active       = false;
+        }
+        HeapFree(GetProcessHeap(), 0, This->callback_audio_buffer);
+        This->callback_audio_buffer = NULL;
+        This->host_callbacks        = NULL;
+        This->host_active_inputs = This->host_active_outputs = 0;
         return -1000;
+    }
 
     /* Connect to hardware: a chosen device (by node.name) or the first
      * available one ("" => default).  Our inputs read FROM a source's output
@@ -1281,9 +1309,9 @@ CreateBuffers(LPPIPEASIO iface, BufferInformation *bufferInfo, LONG numChannels,
         }
 
         if (in_src)
-            audio_free((void *)in_src);
+            audio_free_ports(in_src);
         if (out_dst)
-            audio_free((void *)out_dst);
+            audio_free_ports(out_dst);
     }
 
     /* at this point all the connections are made and the process callback is outputting silence */
@@ -1345,6 +1373,7 @@ DisposeBuffers(LPPIPEASIO iface)
 
     if (This->callback_audio_buffer)
         HeapFree(GetProcessHeap(), 0, This->callback_audio_buffer);
+    This->callback_audio_buffer = NULL;
 
     This->host_driver_state = Initialized;
     return 0;
@@ -1751,6 +1780,14 @@ configure_driver(IPipeASIOImpl *This)
         if (errno != ERANGE)
             This->pipeasio_number_outputs = result;
     }
+    if (This->pipeasio_number_inputs < 0)
+        This->pipeasio_number_inputs = 0;
+    if (This->pipeasio_number_inputs > PIPEASIO_MAX_CHANNELS)
+        This->pipeasio_number_inputs = PIPEASIO_MAX_CHANNELS;
+    if (This->pipeasio_number_outputs < 0)
+        This->pipeasio_number_outputs = 0;
+    if (This->pipeasio_number_outputs > PIPEASIO_MAX_CHANNELS)
+        This->pipeasio_number_outputs = PIPEASIO_MAX_CHANNELS;
     if (GetEnvironmentVariableA("PIPEASIO_CONNECT_TO_HARDWARE", environment_variable,
                                 MAX_ENVIRONMENT_SIZE))
     {

@@ -117,11 +117,13 @@ void         *audio_port_get_buffer(audio_port_t *port, audio_nframes_t nframes)
 const char   *audio_port_name(const audio_port_t *port);
 const char   *audio_port_type(const audio_port_t *port);
 audio_port_t *audio_port_by_name(audio_client_t *client, const char *port_name);
-const char  **audio_get_ports(audio_client_t *client, const char *port_name_pattern,
-                              const char *type_name_pattern, uint64_t flags);
+/* The returned NULL-terminated array and its name strings are duplicated
+ * out of the discovered cache; free both with audio_free_ports (not audio_free). */
+const char **audio_get_ports(audio_client_t *client, const char *port_name_pattern,
+                             const char *type_name_pattern, uint64_t flags);
 /* Like audio_get_ports, but restricted to the device whose PipeWire
  * node.name == node_name.  node_name NULL/"" falls back to the first
- * available device (same as audio_get_ports). Caller frees with audio_free. */
+ * available device (same as audio_get_ports). Free with audio_free_ports. */
 const char **audio_get_device_ports(audio_client_t *client, const char *node_name, uint64_t flags);
 /* Returns and clears the "PipeWire default sink/source changed" flag (set when
  * the "default" metadata switches to a different node after the initial fill).
@@ -141,3 +143,6 @@ bool audio_set_latency_callback(audio_client_t *client, audio_latency_cb cb, voi
 bool     audio_connect(audio_client_t *client, const char *src, const char *dst);
 uint32_t audio_transport_query(const audio_client_t *client, audio_position_t *pos);
 void     audio_free(void *ptr);
+/* Frees an array returned by audio_get_ports / audio_get_device_ports,
+ * including the duplicated name strings. */
+void audio_free_ports(const char **ports);

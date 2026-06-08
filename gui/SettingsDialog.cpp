@@ -251,14 +251,30 @@ SettingsDialog::applyConfig(const pipeasio_config &c)
     m_bufferSize->setCurrentIndex(bufIdx >= 0 ? bufIdx : 0);
 
     int srIdx = m_sampleRate->findData(c.sample_rate);
+    if (srIdx < 0 && c.sample_rate > 0)
+    {
+        m_sampleRate->addItem(QString::number(c.sample_rate) + QStringLiteral(" Hz (unavailable)"),
+                              c.sample_rate);
+        srIdx = m_sampleRate->count() - 1;
+    }
     m_sampleRate->setCurrentIndex(srIdx >= 0 ? srIdx : 0);
 
     const QString out    = QString::fromUtf8(c.output_device);
     int           outIdx = m_outputDevice->findData(out);
+    if (outIdx < 0 && !out.isEmpty())
+    {
+        m_outputDevice->addItem(out + QStringLiteral(" (unavailable)"), out);
+        outIdx = m_outputDevice->count() - 1;
+    }
     m_outputDevice->setCurrentIndex(outIdx >= 0 ? outIdx : 0);
 
     const QString in    = QString::fromUtf8(c.input_device);
     int           inIdx = m_inputDevice->findData(in);
+    if (inIdx < 0 && !in.isEmpty())
+    {
+        m_inputDevice->addItem(in + QStringLiteral(" (unavailable)"), in);
+        inIdx = m_inputDevice->count() - 1;
+    }
     m_inputDevice->setCurrentIndex(inIdx >= 0 ? inIdx : 0);
 
     m_autoConnect->setChecked(c.auto_connect);

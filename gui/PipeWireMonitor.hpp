@@ -54,9 +54,17 @@ class PipeWireMonitor : public QObject
 
   private slots:
     void poll();
+    void onTopFinished();
+    void onDumpFinished();
 
   private:
-    QTimer *m_timer;
-    QString m_target;
-    bool    m_autoDiscover; /* true => resolve our node via the marker prop */
+    void startTop();
+    void startDump();
+
+    QTimer    *m_timer;
+    QString    m_target;
+    bool       m_autoDiscover;   /* true => resolve our node via the marker prop */
+    QProcess  *m_proc = nullptr; /* in-flight child (pw-top or pw-dump) */
+    bool       m_busy = false;   /* a poll cycle is in flight */
+    QByteArray m_lastTop;        /* last pw-top output, re-parsed after discovery */
 };

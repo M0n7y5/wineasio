@@ -229,6 +229,12 @@ that applies to it.
 ### CHANGE LOG
 
 #### Unreleased
+* 08-JUN-2026: Fix a potential crash (use-after-free / heap corruption) when a PipeWire device connects or disconnects while the driver is starting or reconnecting — the device-discovery caches are now locked against the registry thread, and returned port-name lists are copied so they can't be freed underfoot
+* 08-JUN-2026: Fix possibly garbled or out-of-bounds output when following a device clock (e.g. Bluetooth) or when PipeWire clamps the forced quantum — the driver no longer publishes more audio per cycle than it actually produced
+* 08-JUN-2026: Fix a memory leak when the audio backend fails to start during buffer setup, and free the discovered-port lists on the driver-init error paths
+* 08-JUN-2026: The settings panel no longer briefly freezes on every Monitor refresh — `pw-top` and `pw-dump` now run asynchronously instead of blocking the UI thread
+* 08-JUN-2026: The panel keeps a saved output/input device or sample rate that isn't currently available (shown as "(unavailable)") instead of silently resetting it on Apply
+* 08-JUN-2026: Harden channel-count limits (clamp `inputs`/`outputs` from both the INI and the `PIPEASIO_NUMBER_*` environment overrides) and tighten COM teardown plus several NULL/error paths
 * 08-JUN-2026: The Monitor tab's DSP load is now a rolling history graph (green / amber / red bars by level, current % shown, frozen and dimmed when idle) instead of a single bar, so you can see load trends and spikes over time
 * 08-JUN-2026: Fix the Monitor tab never showing live values — it failed to recognise the driver's own PipeWire node (the `pipeasio.node` marker is serialised by `pw-dump` as a JSON number, not a string), then read `pw-top`'s all-zero baseline sample instead of the measured iteration and choked on locale comma decimals. Quantum / sample rate / DSP load / xruns / state now populate while audio plays
 * 08-JUN-2026: Add explanatory tooltips to every Settings and Monitor field

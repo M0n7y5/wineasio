@@ -114,9 +114,9 @@ apply_kv(struct pipeasio_config *c, const char *key, const char *val)
 static void
 validate(struct pipeasio_config *c)
 {
-    if (c->inputs < 0)
+    if (c->inputs < 0 || c->inputs > PIPEASIO_MAX_CHANNELS)
         c->inputs = PIPEASIO_DEFAULT_INPUTS;
-    if (c->outputs < 0)
+    if (c->outputs < 0 || c->outputs > PIPEASIO_MAX_CHANNELS)
         c->outputs = PIPEASIO_DEFAULT_OUTPUTS;
 
     const int b = c->buffer_size;
