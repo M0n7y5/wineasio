@@ -31,7 +31,6 @@
 #ifdef DEBUG
 #include "wine/debug.h"
 #endif
-/* WINE_DEFAULT_DEBUG_CHANNEL(asio); */
 
 /* {2d3ca9e2-1193-4c5d-b5fd-38798f3dc074} */
 static GUID const CLSID_PipeASIO
@@ -52,8 +51,6 @@ extern HRESULT WINAPI PipeASIOCreateInstance(REFIID riid, LPVOID *ppobj);
 static HRESULT WINAPI
 CF_QueryInterface(LPCLASSFACTORY iface, REFIID riid, LPVOID *ppobj)
 {
-    /* IClassFactoryImpl *This = (IClassFactoryImpl *)iface;
-    FIXME("(%p, %s, %p) stub!\n", This, debugstr_guid(riid), ppobj); */
     if (ppobj == NULL)
         return E_POINTER;
     return E_NOINTERFACE;
@@ -64,7 +61,6 @@ CF_AddRef(LPCLASSFACTORY iface)
 {
     IClassFactoryImpl *This = (IClassFactoryImpl *)iface;
     ULONG              ref  = InterlockedIncrement(&(This->ref));
-    /* TRACE("iface: %p, ref has been set to %x\n", This, ref); */
     return ref;
 }
 
@@ -73,7 +69,6 @@ CF_Release(LPCLASSFACTORY iface)
 {
     IClassFactoryImpl *This = (IClassFactoryImpl *)iface;
     ULONG              ref  = InterlockedDecrement(&(This->ref));
-    /* TRACE("iface %p, ref has been set to %x\n", This, ref); */
     /* static class, won't be freed */
     return ref;
 }
@@ -81,28 +76,21 @@ CF_Release(LPCLASSFACTORY iface)
 static HRESULT WINAPI
 CF_CreateInstance(LPCLASSFACTORY iface, LPUNKNOWN pOuter, REFIID riid, LPVOID *ppobj)
 {
-    /* IClassFactoryImpl *This = (IClassFactoryImpl *)iface;
-    TRACE("iface: %p, pOuter: %p, riid: %s, ppobj: %p)\n", This, pOuter, debugstr_guid(riid), ppobj); */
-
     if (pOuter)
         return CLASS_E_NOAGGREGATION;
 
     if (ppobj == NULL)
     {
-        /* WARN("invalid parameter\n"); */
         return E_INVALIDARG;
     }
 
     *ppobj = NULL;
-    /* TRACE("Creating the PipeASIO object\n"); */
     return PipeASIOCreateInstance(riid, ppobj);
 }
 
 static HRESULT WINAPI
 CF_LockServer(LPCLASSFACTORY iface, BOOL dolock)
 {
-    /* IClassFactoryImpl *This = (IClassFactoryImpl *)iface;
-    FIXME("iface: %p, dolock: %d) stub!\n", This, dolock); */
     return S_OK;
 }
 
@@ -112,16 +100,8 @@ static const IClassFactoryVtbl CF_Vtbl
 static IClassFactoryImpl PIPEASIO_CF = { &CF_Vtbl, 1 };
 
 /*******************************************************************************
- * DllGetClassObject [DSOUND.@]
+ * DllGetClassObject
  * Retrieves class object from a DLL object
- *
- * NOTES
- *    Docs say returns STDAPI
- *
- * PARAMS
- *    rclsid [I] CLSID for the class object
- *    riid   [I] Reference to identifier of interface for class object
- *    ppv    [O] Address of variable to receive interface pointer for riid
  *
  * RETURNS
  *    Success: S_OK
@@ -131,11 +111,8 @@ static IClassFactoryImpl PIPEASIO_CF = { &CF_Vtbl, 1 };
 HRESULT WINAPI
 DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv)
 {
-    /* TRACE("rclsid: %s, riid: %s, ppv: %p)\n", debugstr_guid(rclsid), debugstr_guid(riid), ppv); */
-
     if (ppv == NULL)
     {
-        /* WARN("invalid parameter\n"); */
         return E_INVALIDARG;
     }
 
@@ -143,7 +120,6 @@ DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv)
 
     if (!IsEqualIID(riid, &IID_IClassFactory) && !IsEqualIID(riid, &IID_IUnknown))
     {
-        /* WARN("no interface for %s\n", debugstr_guid(riid)); */
         return E_NOINTERFACE;
     }
 
@@ -154,7 +130,6 @@ DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv)
         return S_OK;
     }
 
-    /* WARN("rclsid: %s, riid: %s, ppv: %p): no class found.\n", debugstr_guid(rclsid), debugstr_guid(riid), ppv); */
     return CLASS_E_CLASSNOTAVAILABLE;
 }
 
@@ -169,7 +144,6 @@ DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv)
 HRESULT WINAPI
 DllCanUnloadNow(void)
 {
-    /* FIXME("(void): stub\n"); */
     return S_FALSE;
 }
 
@@ -179,24 +153,17 @@ DllCanUnloadNow(void)
 BOOL WINAPI
 DllMain(HINSTANCE hInstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
-    /* TRACE("hInstDLL: %p, fdwReason: %x lpvReserved: %p)\n", hInstDLL, fdwReason, lpvReserved); */
-
     switch (fdwReason)
     {
     case DLL_PROCESS_ATTACH:
-        /*        TRACE("DLL_PROCESS_ATTACH\n"); */
         break;
     case DLL_PROCESS_DETACH:
-        /*        TRACE("DLL_PROCESS_DETACH\n"); */
         break;
     case DLL_THREAD_ATTACH:
-        /*        TRACE("DLL_THREAD_ATTACH\n"); */
         break;
     case DLL_THREAD_DETACH:
-        /*        TRACE("DLL_THREAD_DETACH\n"); */
         break;
     default:
-        /*        TRACE("UNKNOWN REASON\n"); */
         break;
     }
     return TRUE;

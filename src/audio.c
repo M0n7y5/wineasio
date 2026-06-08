@@ -542,7 +542,6 @@ audio_close(audio_client_t *c)
     if (c->loop)
         pw_thread_loop_destroy(c->loop);
 
-    /* Free discovered nodes / ports caches. */
     for (uint32_t i = 0; i < c->n_nodes; i++)
     {
         free(c->nodes[i]->node_name);
@@ -928,7 +927,6 @@ audio_port_unregister(audio_client_t *c, audio_port_t *p)
 {
     if (!c || !p)
         return false;
-    /* Remove from the client's array (compact in place). */
     for (uint32_t i = 0; i < c->n_ports; i++)
     {
         if (c->ports[i] == p)
@@ -1775,7 +1773,6 @@ audio_on_registry_global_remove(void *userdata, uint32_t id)
 {
     audio_client_t *c = userdata;
 
-    /* Drop the port from our discovered list if present. */
     for (uint32_t i = 0; i < c->n_discovered; i++)
     {
         if (c->discovered[i]->pw_port_id == id)
@@ -1790,7 +1787,6 @@ audio_on_registry_global_remove(void *userdata, uint32_t id)
             return;
         }
     }
-    /* Or drop a node entry. */
     for (uint32_t i = 0; i < c->n_nodes; i++)
     {
         if (c->nodes[i]->id == id)

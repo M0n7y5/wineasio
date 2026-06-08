@@ -287,10 +287,6 @@ enum
  *  Interface Methods
  */
 
-/*
- *  as seen from the PipeASIO source
- */
-
 HIDDEN HRESULT STDMETHODCALLTYPE QueryInterface(LPPIPEASIO iface, REFIID riid, void **ppvObject);
 HIDDEN ULONG STDMETHODCALLTYPE   AddRef(LPPIPEASIO iface);
 HIDDEN ULONG STDMETHODCALLTYPE   Release(LPPIPEASIO iface);
@@ -417,12 +413,6 @@ QueryInterface(LPPIPEASIO iface, REFIID riid, void **ppvObject)
 
     return E_NOINTERFACE;
 }
-
-/*
- * ULONG STDMETHODCALLTYPE AddRef(LPPIPEASIO iface);
- * Function: Increment the reference count on the object
- * Returns:  Ref count
- */
 
 HIDDEN ULONG STDMETHODCALLTYPE
 AddRef(LPPIPEASIO iface)
@@ -561,12 +551,7 @@ stop_config_watch(IPipeASIOImpl *This)
     }
 }
 
-/*
- * ULONG Release (LPPIPEASIO iface);
- *  Function:   Destroy the interface
- *  Returns:    Ref count
- *  Implies:    Stop() and DisposeBuffers()
- */
+/* Implies Stop() and DisposeBuffers(). */
 
 HIDDEN ULONG STDMETHODCALLTYPE
 Release(LPPIPEASIO iface)
@@ -613,13 +598,8 @@ Release(LPPIPEASIO iface)
     return ref;
 }
 
-/*
- * LONG Init (void *sysRef);
- *  Function:   Initialize the driver
- *  Parameters: Pointer to "This"
- *              sysHanle is 0 on OS/X and on windows it contains the applications main window handle
- *  Returns:    0 on error, and 1 on success
- */
+/* sysRef is 0 on OS/X; on Windows it is the application's main window handle.
+ * Returns 0 on error, 1 on success. */
 
 DEFINE_THISCALL_WRAPPER(Init, 8)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -686,7 +666,6 @@ Init(LPPIPEASIO iface, void *sysRef)
     TRACE("%i IOChannel structures allocated\n",
           This->pipeasio_number_inputs + This->pipeasio_number_outputs);
 
-    /* Get and count physical device ports */
     This->phys_input_ports = audio_get_ports(This->audio_client, NULL, NULL,
                                              AUDIO_PORT_IS_PHYSICAL | AUDIO_PORT_IS_OUTPUT);
     for (This->num_phys_input_ports = 0;
@@ -700,7 +679,6 @@ Init(LPPIPEASIO iface, void *sysRef)
          This->num_phys_output_ports++)
         ;
 
-    /* Initialize IOChannel structures */
     for (i = 0; i < This->pipeasio_number_inputs; i++)
     {
         This->input_channel[i].active = false;
@@ -709,7 +687,6 @@ Init(LPPIPEASIO iface, void *sysRef)
         This->input_channel[i].port
                 = audio_port_register(This->audio_client, This->input_channel[i].port_name,
                                       AUDIO_DEFAULT_TYPE, AUDIO_PORT_IS_INPUT, i);
-        /* TRACE("IOChannel structure initialized for input %d: '%s'\n", i, This->input_channel[i].port_name); */
     }
     for (i = 0; i < This->pipeasio_number_outputs; i++)
     {
@@ -719,7 +696,6 @@ Init(LPPIPEASIO iface, void *sysRef)
         This->output_channel[i].port
                 = audio_port_register(This->audio_client, This->output_channel[i].port_name,
                                       AUDIO_DEFAULT_TYPE, AUDIO_PORT_IS_OUTPUT, i);
-        /* TRACE("IOChannel structure initialized for output %d: '%s'\n", i, This->output_channel[i].port_name); */
     }
     TRACE("%i IOChannel structures initialized\n",
           This->pipeasio_number_inputs + This->pipeasio_number_outputs);
@@ -761,11 +737,6 @@ Init(LPPIPEASIO iface, void *sysRef)
     return 1;
 }
 
-/*
- * void GetDriverName(char *name);
- *  Function:    Returns the driver name in name
- */
-
 DEFINE_THISCALL_WRAPPER(GetDriverName, 8)
 HIDDEN void STDMETHODCALLTYPE
 GetDriverName(LPPIPEASIO iface, char *name)
@@ -774,11 +745,6 @@ GetDriverName(LPPIPEASIO iface, char *name)
     strcpy(name, "PipeASIO");
     return;
 }
-
-/*
- * LONG GetDriverVersion (void);
- *  Function:    Returns the driver version number
- */
 
 DEFINE_THISCALL_WRAPPER(GetDriverVersion, 4)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -790,11 +756,6 @@ GetDriverVersion(LPPIPEASIO iface)
     return This->host_version;
 }
 
-/*
- * void GetErrorMessage(char *string);
- *  Function:    Returns an error message for the last occured error in string
- */
-
 DEFINE_THISCALL_WRAPPER(GetErrorMessage, 8)
 HIDDEN void STDMETHODCALLTYPE
 GetErrorMessage(LPPIPEASIO iface, char *string)
@@ -804,12 +765,7 @@ GetErrorMessage(LPPIPEASIO iface, char *string)
     return;
 }
 
-/*
- * LONG Start(void);
- *  Function:    Start IO processing and reset the sample counter to zero
- *  Returns:     -1000 if IO is missing
- *               -999 if the audio backend fails to start
- */
+/* Returns -1000 if IO is missing, -999 if the audio backend fails to start. */
 
 DEFINE_THISCALL_WRAPPER(Start, 4)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -824,7 +780,6 @@ Start(LPPIPEASIO iface)
     if (This->host_driver_state != Prepared)
         return -1000;
 
-    /* Zero the audio buffer */
     for (i = 0; i < (This->pipeasio_number_inputs + This->pipeasio_number_outputs) * 2
                             * This->host_current_buffersize;
          i++)
@@ -865,7 +820,6 @@ Start(LPPIPEASIO iface)
         This->host_callbacks->swapBuffers(This->host_buffer_index, 1);
     }
 
-    /* switch host buffer */
     This->host_buffer_index = This->host_buffer_index ? 0 : 1;
 
     This->host_driver_state = Running;
@@ -873,12 +827,7 @@ Start(LPPIPEASIO iface)
     return 0;
 }
 
-/*
- * LONG Stop(void);
- *  Function:   Stop IO processing
- *  Returns:    -1000 on missing IO
- *  Note:       swapBuffers() must not called after returning
- */
+/* Returns -1000 if IO is missing. swapBuffers() must not be called after this returns. */
 
 DEFINE_THISCALL_WRAPPER(Stop, 4)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -896,12 +845,7 @@ Stop(LPPIPEASIO iface)
     return 0;
 }
 
-/*
- * LONG GetChannels(LONG *numInputChannels, LONG *numOutputChannels);
- *  Function:   Report number of IO channels
- *  Parameters: numInputChannels and numOutputChannels will hold number of channels on returning
- *  Returns:    -1000 if no channels are available, otherwise AES_OK
- */
+/* Returns -1000 if no channels are available, otherwise AES_OK. */
 
 DEFINE_THISCALL_WRAPPER(GetChannels, 12)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -919,11 +863,7 @@ GetChannels(LPPIPEASIO iface, LONG *numInputChannels, LONG *numOutputChannels)
     return 0;
 }
 
-/*
- * LONG GetLatencies(LONG *inputLatency, LONG *outputLatency);
- *  Function:   Return latency in frames
- *  Returns:    -1000 if no IO is available, otherwise AES_OK
- */
+/* Returns -1000 if no IO is available, otherwise AES_OK. */
 
 DEFINE_THISCALL_WRAPPER(GetLatencies, 12)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -948,12 +888,7 @@ GetLatencies(LPPIPEASIO iface, LONG *inputLatency, LONG *outputLatency)
     return 0;
 }
 
-/*
- * LONG GetBufferSize(LONG *minSize, LONG *maxSize, LONG *preferredSize, LONG *granularity);
- *  Function:    Return minimum, maximum, preferred buffer sizes, and granularity
- *               At the moment return all the same, and granularity 0
- *  Returns:    -1000 on missing IO
- */
+/* Currently reports all sizes the same with granularity 0. Returns -1000 on missing IO. */
 
 DEFINE_THISCALL_WRAPPER(GetBufferSize, 20)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -987,11 +922,7 @@ GetBufferSize(LPPIPEASIO iface, LONG *minSize, LONG *maxSize, LONG *preferredSiz
     return 0;
 }
 
-/*
- * LONG CanSampleRate(double sampleRate);
- *  Function:   Ask if specific SR is available
- *  Returns:    -995 if SR isn't available, -1000 on missing IO
- */
+/* Returns -995 if the sample rate isn't available, -1000 on missing IO. */
 
 DEFINE_THISCALL_WRAPPER(CanSampleRate, 12)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -1007,12 +938,8 @@ CanSampleRate(LPPIPEASIO iface, double sampleRate)
     return 0;
 }
 
-/*
- * LONG GetSampleRate(double *currentRate);
- *  Function:   Return current SR
- *  Parameters: currentRate will hold SR on return, 0 if unknown
- *  Returns:    -995 if SR is unknown, -1000 on missing IO
- */
+/* currentRate holds 0 if unknown.
+ * Returns -995 if the sample rate is unknown, -1000 on missing IO. */
 
 DEFINE_THISCALL_WRAPPER(GetSampleRate, 8)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -1029,13 +956,8 @@ GetSampleRate(LPPIPEASIO iface, double *sampleRate)
     return 0;
 }
 
-/*
- * LONG SetSampleRate(double sampleRate);
- *  Function:   Set requested SR, enable external sync if SR == 0
- *  Returns:    -995 if unknown SR
- *              -997 if current clock is external and SR != 0
- *              -1000 on missing IO
- */
+/* SR == 0 enables external sync. Returns -995 on unknown SR, -997 if the
+ * current clock is external and SR != 0, -1000 on missing IO. */
 
 DEFINE_THISCALL_WRAPPER(SetSampleRate, 12)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -1050,14 +972,8 @@ SetSampleRate(LPPIPEASIO iface, double sampleRate)
     return 0;
 }
 
-/*
- * LONG GetClockSources(void *clocks, LONG *numSources);
- *  Function:   Return available clock sources
- *  Parameters: clocks - a pointer to an array of clock source structures.
- *              numSources - when called: number of allocated members
- *                         - on return: number of clock sources, the minimum is 1 - the internal clock
- *  Returns:    -1000 on missing IO
- */
+/* numSources: on entry the number of allocated members, on return the number
+ * of clock sources (minimum 1, the internal clock). Returns -1000 on missing IO. */
 
 DEFINE_THISCALL_WRAPPER(GetClockSources, 12)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -1079,14 +995,8 @@ GetClockSources(LPPIPEASIO iface, void *clocks, LONG *numSources)
     return 0;
 }
 
-/*
- * LONG SetClockSource(LONG index);
- *  Function:   Set clock source
- *  Parameters: index returned by GetClockSources()
- *  Returns:    -1000 on missing IO
- *              -997 may be returned if a clock can't be selected
- *              -995 should not be returned
- */
+/* index is one returned by GetClockSources(). Returns -1000 on missing IO;
+ * -997 if a clock can't be selected; -995 should not be returned. */
 
 DEFINE_THISCALL_WRAPPER(SetClockSource, 8)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -1099,14 +1009,8 @@ SetClockSource(LPPIPEASIO iface, LONG index)
     return 0;
 }
 
-/*
- * LONG GetSamplePosition (w_int64_t *sPos, w_int64_t *tStamp);
- *  Function:   Return sample position and timestamp
- *  Parameters: sPos holds the position on return, reset to 0 on Start()
- *              tStamp holds the system time of sPos
- *  Return:     -1000 on missing IO
- *              -996 on missing clock
- */
+/* sPos holds the position, reset to 0 on Start(); tStamp holds the system time
+ * of sPos. Returns -1000 on missing IO, -996 on missing clock. */
 
 DEFINE_THISCALL_WRAPPER(GetSamplePosition, 12)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -1127,11 +1031,7 @@ GetSamplePosition(LPPIPEASIO iface, w_int64_t *sPos, w_int64_t *tStamp)
     return 0;
 }
 
-/*
- * LONG GetChannelInfo (void *info);
- *  Function:   Retrive channel info
- *  Returns:    -1000 on missing IO
- */
+/* Returns -1000 on missing IO. */
 
 DEFINE_THISCALL_WRAPPER(GetChannelInfo, 8)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -1142,8 +1042,6 @@ GetChannelInfo(LPPIPEASIO iface, void *info)
 
     const LONG channelNumber = *linfo++;
     const LONG isInputType   = *linfo++;
-
-    /* TRACE("(iface: %p, info: %p\n", iface, info); */
 
     if (channelNumber < 0
         || (isInputType ? channelNumber >= This->pipeasio_number_inputs
@@ -1160,17 +1058,9 @@ GetChannelInfo(LPPIPEASIO iface, void *info)
     return 0;
 }
 
-/*
- * LONG CreateBuffers(BufferInformation *bufferInfo, LONG numChannels, LONG bufferSize, Callbacks *callbacks);
- *  Function:   Allocate buffers for IO channels
- *  Parameters: bufferInfo   - pointer to an array of BufferInformation structures
- *              numChannels  - the total number of IO channels to be allocated
- *              bufferSize   - one of the buffer sizes retrieved with GetBufferSize()
- *              callbacks    - pointer to a Callbacks structure
- *  Returns:    -994 if impossible to allocate enough memory
- *              -997 on unsupported bufferSize or invalid bufferInfo data
- *              -1000 on missing IO
- */
+/* bufferSize must be one returned by GetBufferSize(). Returns -994 if memory
+ * can't be allocated, -997 on unsupported bufferSize or invalid bufferInfo,
+ * -1000 on missing IO. */
 
 DEFINE_THISCALL_WRAPPER(CreateBuffers, 20)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -1416,13 +1306,7 @@ CreateBuffers(LPPIPEASIO iface, BufferInformation *bufferInfo, LONG numChannels,
     return 0;
 }
 
-/*
- * LONG DisposeBuffers(void);
- *  Function:   Release allocated buffers
- *  Returns:    -997 if no buffers were previously allocated
- *              -1000 on missing IO
- *  Implies:    Stop()
- */
+/* Implies Stop(). Returns -997 if no buffers were previously allocated, -1000 on missing IO. */
 
 DEFINE_THISCALL_WRAPPER(DisposeBuffers, 4)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -1466,12 +1350,8 @@ DisposeBuffers(LPPIPEASIO iface)
     return 0;
 }
 
-/*
- * LONG ControlPanel(void);
- *  Function:   Open a control panel for driver settings
- *  Returns:    -1000 if no control panel exists.  Actually return code should be ignored
- *  Note:       Call sendNotification if something has changed
- */
+/* Returns -1000 if no control panel exists, but the return code should be
+ * ignored. Call sendNotification if something changed. */
 
 DEFINE_THISCALL_WRAPPER(ControlPanel, 4)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -1506,13 +1386,7 @@ ControlPanel(LPPIPEASIO iface)
     return 0;
 }
 
-/*
- * LONG Future(LONG selector, void *opt);
- *  Function:   Various
- *  Returns:    Depends on the selector but in general -998 on invalid selector
- *              -998 if function is unsupported to disable further calls
- *              0x3f4847a0 on success, do not use 0
- */
+/* Returns -998 on invalid or unsupported selector, 0x3f4847a0 on success (never 0). */
 
 DEFINE_THISCALL_WRAPPER(Future, 12)
 HIDDEN LONG STDMETHODCALLTYPE
@@ -1589,19 +1463,12 @@ Future(LPPIPEASIO iface, LONG selector, void *opt)
     }
 }
 
-/*
- * LONG OutputReady(void);
- *  Function:   Tells the driver that output bufffers are ready
- *  Returns:    0 if supported
- *              -1000 to disable
- */
+/* Returns 0 if supported, -1000 to disable. */
 
 DEFINE_THISCALL_WRAPPER(OutputReady, 4)
 HIDDEN LONG STDMETHODCALLTYPE
 OutputReady(LPPIPEASIO iface)
 {
-    /* disabled to stop stand alone NI programs from spamming the console
-    TRACE("iface: %p\n", iface); */
     return -1000;
 }
 
@@ -1757,7 +1624,6 @@ process_callback(audio_nframes_t nframes, void *arg)
                        sizeof(audio_sample_t) * nframes);
         }
 
-    /* switch host buffer */
     This->host_buffer_index = This->host_buffer_index ? 0 : 1;
     return 0;
 }
@@ -1953,8 +1819,6 @@ PipeASIOCreateInstance(REFIID riid, LPVOID *ppobj)
 {
     IPipeASIOImpl *pobj;
 
-    /* TRACE("riid: %s, ppobj: %p\n", debugstr_guid(riid), ppobj); */
-
     /* HEAP_ZERO_MEMORY (0x8) is critical: the struct holds host-facing
      * state like host_time.speed (a double the ASIO host may read even
      * when we don't flag it kSpeedValid).  Allocating with random bytes
@@ -1972,6 +1836,5 @@ PipeASIOCreateInstance(REFIID riid, LPVOID *ppobj)
     pobj->ref    = 1;
     TRACE("pobj = %p\n", pobj);
     *ppobj = pobj;
-    /* TRACE("return %p\n", *ppobj); */
     return S_OK;
 }

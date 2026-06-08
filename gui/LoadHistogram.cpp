@@ -82,7 +82,6 @@ LoadHistogram::paintEvent(QPaintEvent *)
     const int   w = r.width();
     const int   h = r.height();
 
-    /* Panel background. */
     p.fillRect(r, QColor(0x1e, 0x22, 0x2a));
 
     /* Reference gridlines at 25 / 50 / 75 / 100 %. */
