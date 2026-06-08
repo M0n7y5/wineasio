@@ -3,131 +3,164 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PipeASIO — ASIO driver for Wine, native to PipeWire</title>
-<meta name="description" content="PipeASIO is an ASIO driver for Wine that talks to PipeWire directly — no libjack runtime dependency. Built so FL Studio and other ASIO hosts run under Proton / Steam Runtime.">
+<title>PipeASIO - ASIO driver for Wine, native to PipeWire</title>
+<meta name="description" content="PipeASIO is an ASIO driver for Wine that speaks to PipeWire directly. No libjack, no Wine audio detour. Built so FL Studio and other ASIO hosts run under Proton.">
 <meta property="og:title" content="PipeASIO">
-<meta property="og:description" content="An ASIO driver for Wine that talks to PipeWire directly — no libjack. Runs inside Proton / steamrt4.">
+<meta property="og:description" content="An ASIO driver for Wine that speaks to PipeWire directly. No libjack, no detours.">
 <meta property="og:type" content="website">
 <style>
   :root {
-    --bg: #0b0f14;
-    --bg-soft: #111821;
-    --surface: #131c26;
-    --border: #21303f;
-    --text: #e6edf3;
-    --muted: #93a1b0;
-    --accent: #2dd4bf;
-    --accent-2: #38bdf8;
-    --code-bg: #0e151d;
+    --bg: #19191c;
+    --bg-soft: #1f1f23;
+    --surface: #252529;
+    --surface-2: #2c2c32;
+    --border: #38383f;
+    --text: #ededed;
+    --muted: #9a9aa3;
+    --accent: #ff6a1f;
+    --accent-2: #ff9352;
+    --accent-deep: #d8470f;
+    --danger: #e5484d;
     --radius: 14px;
-    --maxw: 960px;
+    --maxw: 980px;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
+    margin: 0; background: var(--bg); color: var(--text);
     font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
   a { color: var(--accent-2); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  code, pre, .mono { font-family: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace; }
+  a:hover { color: var(--accent); text-decoration: underline; }
+  code, pre, .mono { font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; }
   .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  section { padding: 60px 0; border-top: 1px solid var(--border); scroll-margin-top: 70px; }
+  h2 { font-size: 27px; margin: 0 0 8px; letter-spacing: -.4px; }
+  h2 + .lead { color: var(--muted); margin: 0 0 30px; max-width: 720px; }
+  p { color: #cdcdd3; }
 
   /* Header */
   header {
-    position: sticky; top: 0; z-index: 10;
-    background: rgba(11,15,20,.8);
-    backdrop-filter: blur(10px);
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(25,25,28,.82); backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
   }
   .nav { display: flex; align-items: center; justify-content: space-between; height: 60px; }
-  .brand { font-weight: 700; letter-spacing: .2px; font-size: 18px; }
+  .brand { font-weight: 800; font-size: 19px; letter-spacing: .2px; }
   .brand .dot { color: var(--accent); }
   .nav-links { display: flex; gap: 22px; align-items: center; }
   .nav-links a { color: var(--muted); font-size: 15px; }
   .nav-links a:hover { color: var(--text); text-decoration: none; }
 
   /* Hero */
-  .hero { position: relative; overflow: hidden; padding: 88px 0 72px; text-align: center; }
+  .hero { position: relative; overflow: hidden; padding: 92px 0 76px; text-align: center; border-top: none; }
   .hero::before {
-    content: ""; position: absolute; inset: -40% 0 auto 0; height: 460px;
-    background: radial-gradient(60% 60% at 50% 0%, rgba(45,212,191,.16), rgba(56,189,248,.05) 45%, transparent 70%);
+    content: ""; position: absolute; inset: -50% 0 auto 0; height: 520px;
+    background: radial-gradient(54% 60% at 50% 0%, rgba(255,106,31,.20), rgba(255,106,31,.05) 46%, transparent 72%);
     pointer-events: none;
   }
-  .hero h1 { font-size: clamp(38px, 7vw, 66px); margin: 0 0 6px; letter-spacing: -1.2px; }
-  .hero .tag { font-size: clamp(17px, 2.6vw, 22px); color: var(--muted); max-width: 680px; margin: 0 auto 14px; }
-  .hero .tag strong { color: var(--text); }
+  .hero > .wrap { position: relative; }
+  .hero h1 { font-size: clamp(40px, 7.5vw, 72px); margin: 0 0 8px; letter-spacing: -1.5px; }
+  .hero h1 .dot { color: var(--accent); }
+  .hero .tag { font-size: clamp(17px, 2.6vw, 22px); color: var(--muted); max-width: 660px; margin: 0 auto 16px; }
+  .hero .tag b { color: var(--text); }
   .badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 22px 0 30px; }
-  .pill {
-    font-size: 12.5px; padding: 5px 12px; border-radius: 999px;
-    border: 1px solid var(--border); background: var(--surface); color: var(--muted);
-  }
+  .pill { font-size: 12.5px; padding: 5px 13px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
   .pill b { color: var(--accent); font-weight: 600; }
   .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-  .btn {
-    display: inline-block; padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 15px;
-    border: 1px solid var(--border); transition: transform .08s ease, border-color .15s ease, background .15s ease;
-  }
-  .btn:hover { transform: translateY(-1px); text-decoration: none; }
-  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #062a26; border-color: transparent; }
+  .btn { display: inline-block; padding: 13px 24px; border-radius: 10px; font-weight: 600; font-size: 15px; border: 1px solid var(--border); transition: transform .1s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease; }
+  .btn:hover { transform: translateY(-2px); text-decoration: none; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #fff; border-color: transparent; box-shadow: 0 8px 26px -10px rgba(255,106,31,.7); }
+  .btn-primary:hover { box-shadow: 0 12px 34px -10px rgba(255,106,31,.85); color: #fff; }
   .btn-ghost { color: var(--text); background: var(--surface); }
   .btn-ghost:hover { border-color: var(--accent); }
 
-  /* Sections */
-  section { padding: 56px 0; border-top: 1px solid var(--border); }
-  h2 { font-size: 26px; margin: 0 0 8px; letter-spacing: -.4px; }
-  h2 + .lead { color: var(--muted); margin: 0 0 28px; max-width: 720px; }
-  p { color: #c7d2dd; }
+  /* Diagram */
+  .diagram { overflow-x: auto; padding-bottom: 4px; }
+  .lane { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+  .lane-on { border-color: rgba(255,106,31,.45); box-shadow: 0 0 0 1px rgba(255,106,31,.12), 0 10px 34px -16px rgba(255,106,31,.5); }
+  .lane-name { font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; }
+  .lane-on .lane-name { color: var(--accent); }
+  .flowrow { display: flex; align-items: center; margin: 13px 0 9px; min-width: max-content; }
+  .lane-tag { font-size: 13px; color: var(--muted); }
+  .lane-tag.bad { color: var(--danger); }
+  .node { white-space: nowrap; font-size: 13.5px; padding: 8px 13px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
+  .node-host { border-style: dashed; color: var(--muted); }
+  .node-accent { border-color: var(--accent); color: #fff; font-weight: 600; background: linear-gradient(180deg, rgba(255,106,31,.20), rgba(255,106,31,.05)); box-shadow: 0 0 16px -3px rgba(255,106,31,.6); }
+  .node.dim { color: var(--muted); background: transparent; }
+  .node.bad { color: var(--danger); border-color: rgba(229,72,77,.55); }
+  .wire { position: relative; flex: 1 1 30px; min-width: 30px; height: 3px; background: var(--border); border-radius: 2px; }
+  .wire.flow { background: linear-gradient(90deg, var(--accent-deep), var(--accent)); }
+  .wire.flow::after { content: ""; position: absolute; top: 50%; left: 0; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 11px 2px var(--accent); animation: flow 1.3s linear infinite; }
+  .wire.flow.d1::after { animation-delay: .43s; }
+  .wire.flow.d2::after { animation-delay: .86s; }
+  .wire.dimflow::after { content: ""; position: absolute; top: 50%; left: 0; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--muted); animation: flow 2.7s linear infinite; opacity: .6; }
+  .wire.broken { background: repeating-linear-gradient(90deg, var(--danger) 0 5px, transparent 5px 11px); opacity: .55; }
+  @keyframes flow { 0% { left: 0; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
 
-  .note {
-    border: 1px solid var(--border); border-left: 3px solid var(--accent);
-    background: var(--bg-soft); border-radius: 10px; padding: 14px 18px; color: var(--muted); font-size: 15px;
-  }
+  /* Comparison table */
+  .cmp { width: 100%; border-collapse: collapse; font-size: 14.5px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; }
+  .cmp th, .cmp td { padding: 13px 16px; border-bottom: 1px solid var(--border); text-align: left; }
+  .cmp thead th { background: var(--bg-soft); font-size: 13px; }
+  .cmp thead th:nth-child(2) { color: var(--accent); }
+  .cmp tbody tr:last-child td { border-bottom: none; }
+  .cmp td:first-child { color: var(--muted); }
+  .cmp .yes { color: var(--accent); font-weight: 600; }
+  .cmp .no { color: var(--muted); }
+  .cmp .bad { color: var(--danger); }
+  .cmp-scroll { overflow-x: auto; }
 
   /* Features */
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(248px, 1fr)); gap: 16px; }
-  .card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 22px; transition: border-color .15s ease, transform .08s ease;
-  }
-  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; transition: border-color .2s ease, transform .1s ease, box-shadow .2s ease; }
+  .card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 12px 30px -18px rgba(255,106,31,.6); }
   .card h3 { margin: 0 0 6px; font-size: 16px; }
-  .card h3::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); margin-right: 9px; vertical-align: middle; }
+  .card h3::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); margin-right: 10px; vertical-align: middle; }
   .card p { margin: 0; font-size: 14.5px; color: var(--muted); }
 
-  /* Screenshot */
-  .shot { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg-soft); }
-  .shot img { display: block; width: 100%; height: auto; }
-  figcaption { color: var(--muted); font-size: 13.5px; text-align: center; margin-top: 12px; }
+  /* Screenshots */
   .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
   .shots figure { margin: 0; }
+  .shot { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg-soft); transition: transform .15s ease, border-color .2s ease; }
+  .shot:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .shot img { display: block; width: 100%; height: auto; }
+  figcaption { color: var(--muted); font-size: 13.5px; text-align: center; margin-top: 11px; }
 
   /* Code */
-  pre {
-    background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px;
-    padding: 18px 20px; overflow-x: auto; font-size: 14px; line-height: 1.7; color: #d6e2ee;
-  }
+  pre { background: #141417; border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; overflow-x: auto; font-size: 14px; line-height: 1.7; color: #d8d8de; }
   pre .c { color: var(--muted); }
   pre .p { color: var(--accent); }
-  .step { color: var(--muted); font-size: 14px; margin: 26px 0 8px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; }
+  .step { color: var(--accent); font-size: 13px; margin: 26px 0 8px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
   .step:first-child { margin-top: 0; }
+  .note { border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--bg-soft); border-radius: 10px; padding: 14px 18px; color: var(--muted); font-size: 15px; }
 
   /* Config table */
-  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
-  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .3px; }
-  td code { color: var(--accent); background: var(--code-bg); padding: 2px 6px; border-radius: 5px; font-size: 13px; }
-  td.d { color: var(--muted); }
+  table.cfg { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  table.cfg th, table.cfg td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.cfg th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .3px; }
+  table.cfg td code { color: var(--accent); background: #141417; padding: 2px 6px; border-radius: 5px; font-size: 13px; }
+  table.cfg td.d { color: var(--muted); }
 
   /* Footer */
   footer { border-top: 1px solid var(--border); padding: 40px 0 56px; color: var(--muted); font-size: 14px; }
   .foot-row { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .foot-links { display: flex; gap: 20px; flex-wrap: wrap; }
-  @media (max-width: 600px) { .nav-links .hide-sm { display: none; } .hero { padding: 60px 0 48px; } }
+
+  /* Animations */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  .fu { opacity: 0; animation: fadeUp .7s cubic-bezier(.2,.7,.2,1) forwards; }
+  .fu.d1 { animation-delay: .08s; } .fu.d2 { animation-delay: .16s; } .fu.d3 { animation-delay: .24s; } .fu.d4 { animation-delay: .32s; }
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (max-width: 600px) { .nav-links .hide-sm { display: none; } .hero { padding: 62px 0 50px; } }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; scroll-behavior: auto; }
+    .fu, .reveal { opacity: 1; transform: none; }
+    .wire.flow::after, .wire.dimflow::after { display: none; }
+  }
 </style>
+<noscript><style>.reveal { opacity: 1 !important; transform: none !important; }</style></noscript>
 </head>
 <body>
 
@@ -135,8 +168,8 @@
   <div class="wrap nav">
     <span class="brand">Pipe<span class="dot">ASIO</span></span>
     <nav class="nav-links">
-      <a href="#why" class="hide-sm">Why</a>
-      <a href="#features" class="hide-sm">Features</a>
+      <a href="#routing" class="hide-sm">How it works</a>
+      <a href="#compare" class="hide-sm">Compare</a>
       <a href="#quickstart">Get&nbsp;started</a>
       <a href="https://github.com/M0n7y5/pipeasio">GitHub</a>
     </nav>
@@ -144,123 +177,165 @@
 </header>
 
 <main>
-  <section class="hero" style="border-top:none">
+  <section class="hero">
     <div class="wrap">
-      <h1>PipeASIO</h1>
-      <p class="tag">An <strong>ASIO driver for Wine</strong> that talks to <strong>PipeWire</strong> directly &mdash; no <code>libjack.so.0</code> runtime dependency.</p>
-      <div class="badges">
+      <h1 class="fu">Pipe<span class="dot">ASIO</span></h1>
+      <p class="tag fu d1">An <b>ASIO driver for Wine</b> that speaks to <b>PipeWire</b> directly. No libjack, no Wine audio detour.</p>
+      <div class="badges fu d2">
         <span class="pill"><b>v1.0.0-rc1</b></span>
         <span class="pill">x86_64</span>
         <span class="pill">PipeWire&nbsp;1.6+</span>
         <span class="pill">Wine&nbsp;10+</span>
         <span class="pill">LGPL-2.1 · GPL-2.0</span>
       </div>
-      <div class="cta">
+      <div class="cta fu d3">
         <a class="btn btn-primary" href="#quickstart">Get started</a>
         <a class="btn btn-ghost" href="https://github.com/M0n7y5/pipeasio">View on GitHub</a>
       </div>
     </div>
   </section>
 
-  <section id="why">
-    <div class="wrap">
-      <h2>Why PipeASIO?</h2>
-      <p class="lead">A fork of <a href="https://github.com/wineasio/wineasio">WineASIO</a>, rebuilt to be PipeWire-native so it loads where upstream can't.</p>
-      <p>ASIO is the low-latency audio driver model Windows DAWs use &mdash; FL&nbsp;Studio, Ableton Live, Reaper. Running them under Wine/Proton means the host needs an ASIO driver on the Linux side.</p>
-      <p>Upstream WineASIO links against JACK and <code>dlopen</code>s <code>libjack.so.0</code> at runtime. Inside the Steam Runtime <code>steamrt4</code> container that Proton uses, that library isn't present &mdash; only <code>libpipewire-0.3</code> is &mdash; so upstream segfaults on load. PipeASIO drops the JACK bridge entirely and speaks to PipeWire directly, so it loads cleanly inside Proton / Faugus and on any modern PipeWire desktop.</p>
-      <p>It also carries its <strong>own COM identity</strong> (CLSID <code>{2D3CA9E2-…}</code>, registered under <code>HKCU\Software\ASIO\PipeASIO</code>, DLL <code>pipeasio64.dll</code>), so it installs <strong>alongside</strong> WineASIO without either overriding the other &mdash; hosts see two separate drivers.</p>
-    </div>
-  </section>
-
-  <section id="features" style="background:var(--bg-soft)">
-    <div class="wrap">
-      <h2>What you get</h2>
-      <p class="lead">A focused, modern ASIO ↔ PipeWire bridge with a native settings panel.</p>
-      <div class="grid">
-        <div class="card">
-          <h3>PipeWire-native</h3>
-          <p>Talks to <code>libpipewire-0.3</code> directly via a <code>pw_filter</code> DSP node &mdash; no JACK, no <code>libjack.so.0</code> at runtime.</p>
+  <section id="routing">
+    <div class="wrap reveal">
+      <h2>Straight to PipeWire</h2>
+      <p class="lead">PipeASIO is a native PipeWire client. Audio gets from your host to the graph in one hop, instead of detouring through Wine's audio layer or a JACK bridge that the Proton container does not even ship.</p>
+      <div class="diagram">
+        <div class="lane lane-on">
+          <span class="lane-name">PipeASIO</span>
+          <div class="flowrow">
+            <span class="node node-host">FL Studio</span>
+            <span class="wire flow"></span>
+            <span class="node node-accent">PipeASIO</span>
+            <span class="wire flow d1"></span>
+            <span class="node">PipeWire</span>
+            <span class="wire flow d2"></span>
+            <span class="node">Audio device</span>
+          </div>
+          <span class="lane-tag">One hop, native, via <code>libpipewire-0.3</code> shared memory.</span>
         </div>
-        <div class="card">
-          <h3>Runs under Proton</h3>
-          <p>Loads inside the Steam Runtime <code>steamrt4</code> container (FL&nbsp;Studio under Faugus / Proton-CachyOS) via a host <code>WINEDLLPATH</code>.</p>
+        <div class="lane">
+          <span class="lane-name">FL Studio ASIO (built in)</span>
+          <div class="flowrow">
+            <span class="node node-host">FL Studio</span>
+            <span class="wire dimflow"></span>
+            <span class="node dim">Wine audio</span>
+            <span class="wire dimflow"></span>
+            <span class="node dim">pipewire-pulse</span>
+            <span class="wire dimflow"></span>
+            <span class="node dim">PipeWire</span>
+            <span class="wire dimflow"></span>
+            <span class="node dim">Audio device</span>
+          </div>
+          <span class="lane-tag">Works, but rides Wine's audio backend and the PulseAudio compatibility layer.</span>
         </div>
-        <div class="card">
-          <h3>Sample-accurate clock</h3>
-          <p>Locks the PipeWire graph quantum to the host's negotiated buffer size with <code>PW_KEY_NODE_FORCE_QUANTUM</code> for tight, glitch-free timing.</p>
-        </div>
-        <div class="card">
-          <h3>Qt6 settings panel</h3>
-          <p>A native <code>pipeasio-settings</code> GUI: channels, buffer size, device routing, plus a live <strong>Monitor</strong> tab with quantum, rate, xruns and a DSP-load graph.</p>
-        </div>
-        <div class="card">
-          <h3>Bluetooth-friendly</h3>
-          <p>A <em>follow-device-clock</em> mode lets the target device drive the cycle &mdash; required for Bluetooth sinks whose clock is the radio link.</p>
-        </div>
-        <div class="card">
-          <h3>Live config reload</h3>
-          <p>The driver re-reads its INI while running, so saving in the panel applies within about a second &mdash; no reselecting the driver or restarting the host.</p>
+        <div class="lane">
+          <span class="lane-name">WineASIO (upstream)</span>
+          <div class="flowrow">
+            <span class="node node-host">FL Studio</span>
+            <span class="wire dimflow"></span>
+            <span class="node dim">WineASIO</span>
+            <span class="wire broken"></span>
+            <span class="node bad">libjack.so.0</span>
+          </div>
+          <span class="lane-tag bad">Needs <code>libjack.so.0</code>, which is absent in the steamrt4 container, so it crashes on load.</span>
         </div>
       </div>
     </div>
   </section>
 
-  <section id="screenshot">
-    <div class="wrap">
+  <section id="compare" style="background: var(--bg-soft)">
+    <div class="wrap reveal">
+      <h2>How it compares</h2>
+      <p class="lead">FL Studio's built-in ASIO does work under Wine, but it is just a stereo stream handed to Wine's audio layer. PipeASIO is a first-class node in the PipeWire graph.</p>
+      <div class="cmp-scroll">
+        <table class="cmp">
+          <thead>
+            <tr><th>Capability</th><th>PipeASIO</th><th>FL Studio ASIO</th><th>WineASIO</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Loads in Proton / steamrt4</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="bad">No, needs libjack</td></tr>
+            <tr><td>Path to PipeWire</td><td class="yes">Direct, native client</td><td class="no">Through Wine audio</td><td class="no">Through JACK</td></tr>
+            <tr><td>Routable per-channel node in the graph</td><td class="yes">Yes</td><td class="no">No, one stream</td><td class="no">Via JACK only</td></tr>
+            <tr><td>Graph clock locked to the host buffer</td><td class="yes">Yes</td><td class="no">No</td><td class="no">Partial</td></tr>
+            <tr><td>Live settings panel with a load monitor</td><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td></tr>
+            <tr><td>Extra runtime dependency</td><td class="yes">None</td><td class="no">Wine audio</td><td class="bad">libjack.so.0</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap reveal">
+      <h2>What you get</h2>
+      <p class="lead">A focused, modern bridge between ASIO hosts and PipeWire, with a native settings panel.</p>
+      <div class="grid">
+        <div class="card"><h3>PipeWire native</h3><p>Talks to <code>libpipewire-0.3</code> directly through a <code>pw_filter</code> DSP node. No JACK, no <code>libjack.so.0</code> at runtime.</p></div>
+        <div class="card"><h3>Runs under Proton</h3><p>Loads inside the Steam Runtime steamrt4 container that Proton uses, via a host-provided <code>WINEDLLPATH</code>.</p></div>
+        <div class="card"><h3>Sample-accurate clock</h3><p>Locks the PipeWire quantum to the host's negotiated buffer with <code>PW_KEY_NODE_FORCE_QUANTUM</code> for tight, glitch-free timing.</p></div>
+        <div class="card"><h3>Qt6 settings panel</h3><p>A native <code>pipeasio-settings</code> app: channels, buffer size, device routing, plus a live Monitor tab with quantum, rate, xruns, and a DSP-load graph.</p></div>
+        <div class="card"><h3>Bluetooth friendly</h3><p>A follow-device-clock mode lets the target device drive the cycle, which Bluetooth sinks require since their clock is the radio link.</p></div>
+        <div class="card"><h3>Live config reload</h3><p>The driver re-reads its INI while running, so saving in the panel applies within about a second. No reselecting the driver or restarting the host.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="panel" style="background: var(--bg-soft)">
+    <div class="wrap reveal">
       <h2>The settings panel</h2>
-      <p class="lead">Configure channels and routing, then watch the graph live &mdash; shown here running under FL Studio.</p>
+      <p class="lead">Configure channels and routing, then watch the graph live. Shown here running under FL Studio.</p>
       <div class="shots">
         <figure>
           <div class="shot"><img src="panel-settings.png" alt="PipeASIO Settings tab over FL Studio" loading="lazy"></div>
-          <figcaption>Settings &mdash; channels, buffer, devices, follow-device clock.</figcaption>
+          <figcaption>Settings: channels, buffer, devices, follow-device clock.</figcaption>
         </figure>
         <figure>
           <div class="shot"><img src="panel-monitor.png" alt="PipeASIO Monitor tab over FL Studio" loading="lazy"></div>
-          <figcaption>Monitor &mdash; live quantum, rate, DSP-load graph, xruns.</figcaption>
+          <figcaption>Monitor: live quantum, rate, DSP-load graph, xruns.</figcaption>
         </figure>
       </div>
     </div>
   </section>
 
-  <section id="quickstart" style="background:var(--bg-soft)">
-    <div class="wrap">
+  <section id="quickstart">
+    <div class="wrap reveal">
       <h2>Quick start</h2>
-      <p class="lead">x86_64 only. Needs CMake&nbsp;≥&nbsp;3.20, the Wine SDK, <code>pkg-config</code>, <code>libpipewire-0.3-dev</code>, and (for the panel) <code>qt6-base-dev</code>.</p>
+      <p class="lead">x86_64 only. Needs CMake 3.20+, the Wine SDK, <code>pkg-config</code>, <code>libpipewire-0.3-dev</code>, and (for the panel) <code>qt6-base-dev</code>.</p>
 
-      <div class="step">1 · Build</div>
+      <div class="step">1 / Build</div>
 <pre><span class="c"># clone and build (Release)</span>
 git clone https://github.com/M0n7y5/pipeasio.git &amp;&amp; cd pipeasio
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build</pre>
 
-      <div class="step">2 · Install</div>
-<pre><span class="c"># user-local — required for Proton / Faugus / Steam</span>
+      <div class="step">2 / Install</div>
+<pre><span class="c"># user-local, required for Proton / Faugus / Steam</span>
 cmake --install build --prefix <span class="p">"$HOME/.local"</span>
 
-<span class="c"># …or system-wide for a normal Wine setup</span>
+<span class="c"># ...or system-wide for a normal Wine setup</span>
 sudo cmake --install build --prefix /usr</pre>
 
-      <div class="step">3 · Register into a wineprefix</div>
+      <div class="step">3 / Register into a wineprefix</div>
 <pre>env WINEPREFIX=<span class="p">"$HOME/Faugus/&lt;game&gt;"</span> pipeasio-register</pre>
 
-      <div class="step">4 · Proton / Steam Runtime</div>
-      <p>Proton runs Wine in a container that can't see <code>/usr/lib/wine</code>, so install under <code>$HOME</code> (above) and point Proton's Wine at the ELF half by setting this in your launcher's per-game environment:</p>
+      <div class="step">4 / Proton and Steam Runtime</div>
+      <p>Proton runs Wine in a container that cannot see <code>/usr/lib/wine</code>, so install under <code>$HOME</code> (above) and point Proton's Wine at the ELF half by setting this in your launcher's per-game environment:</p>
 <pre>WINEDLLPATH=/home/&lt;you&gt;/.local/lib/wine</pre>
-      <p class="note">Use the absolute path (Faugus doesn't expand <code>~</code>). Then pick <strong>PipeASIO</strong> as the ASIO device inside your host. Full details &mdash; including the config keys and their environment overrides &mdash; are in the <a href="https://github.com/M0n7y5/pipeasio#readme">README</a>.</p>
+      <p class="note">Use the absolute path (Faugus does not expand <code>~</code>). Then pick <b>PipeASIO</b> as the ASIO device inside your host. The full config reference and environment overrides live in the <a href="https://github.com/M0n7y5/pipeasio#readme">README</a>.</p>
     </div>
   </section>
 
-  <section id="config">
-    <div class="wrap">
+  <section id="config" style="background: var(--bg-soft)">
+    <div class="wrap reveal">
       <h2>Configuration</h2>
-      <p class="lead">A flat INI at <code>~/.config/pipeasio/config.ini</code> (written by the panel); every key also has an environment-variable override. Defaults work out of the box.</p>
-      <table>
+      <p class="lead">A flat INI at <code>~/.config/pipeasio/config.ini</code> (written by the panel). Every key also has an environment-variable override, and the defaults work out of the box.</p>
+      <table class="cfg">
         <thead><tr><th>Key</th><th>Default</th><th>What it does</th></tr></thead>
         <tbody>
           <tr><td><code>inputs</code> / <code>outputs</code></td><td class="d">2 / 2</td><td>Number of PipeWire ports the driver opens.</td></tr>
-          <tr><td><code>buffer_size</code></td><td class="d">1024</td><td>Preferred ASIO buffer size (power of two, 16–8192).</td></tr>
+          <tr><td><code>buffer_size</code></td><td class="d">1024</td><td>Preferred ASIO buffer size (power of two, 16 to 8192).</td></tr>
           <tr><td><code>fixed_buffer_size</code></td><td class="d">on</td><td>Lock the size, or let the host change PipeWire's quantum.</td></tr>
-          <tr><td><code>sample_rate</code></td><td class="d">follow</td><td><code>0</code> follows the graph; non-zero pins the rate.</td></tr>
+          <tr><td><code>sample_rate</code></td><td class="d">follow</td><td><code>0</code> follows the graph, a non-zero value pins the rate.</td></tr>
           <tr><td><code>auto_connect</code></td><td class="d">on</td><td>Auto-wire channels to a hardware device on start.</td></tr>
           <tr><td><code>follow_device_clock</code></td><td class="d">off</td><td>Let the target device drive the cycle (needed for Bluetooth).</td></tr>
         </tbody>
@@ -272,7 +347,7 @@ sudo cmake --install build --prefix /usr</pre>
 <footer>
   <div class="wrap foot-row">
     <div>
-      <strong>Pipe<span style="color:var(--accent)">ASIO</span></strong> &mdash; a fork of <a href="https://github.com/wineasio/wineasio">WineASIO</a>.<br>
+      <strong>Pipe<span style="color:var(--accent)">ASIO</span></strong>, a fork of <a href="https://github.com/wineasio/wineasio">WineASIO</a>.<br>
       Library under LGPL-2.1+, settings panel under GPL-2.0+.
     </div>
     <div class="foot-links">
@@ -283,6 +358,23 @@ sudo cmake --install build --prefix /usr</pre>
     </div>
   </div>
 </footer>
+
+<script>
+  (function () {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els = document.querySelectorAll('.reveal');
+    if (reduce || !('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12 });
+    els.forEach(function (el) { io.observe(el); });
+  })();
+</script>
 
 </body>
 </html>
