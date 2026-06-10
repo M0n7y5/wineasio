@@ -19,6 +19,7 @@
  * this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <QApplication>
+#include <QIcon>
 
 #include "SettingsDialog.hpp"
 
@@ -27,6 +28,10 @@ main(int argc, char **argv)
 {
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("pipeasio-settings"));
+    // Matches the installed pipeasio-settings.desktop (Wayland app_id) and
+    // the hicolor icon, so compositors/taskbars pick up the right icon.
+    app.setDesktopFileName(QStringLiteral("pipeasio-settings"));
+    app.setWindowIcon(QIcon::fromTheme(QStringLiteral("pipeasio")));
 
     SettingsDialog dlg;
     return dlg.exec();
