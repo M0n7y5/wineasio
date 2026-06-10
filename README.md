@@ -17,26 +17,24 @@
   <img alt="PipeWire" src="https://img.shields.io/badge/PipeWire-1.6%2B-ff6a1f">
 </p>
 
-PipeASIO is an ASIO driver for Wine that talks to PipeWire directly, with no
-`libjack.so.0` runtime dependency.
+PipeASIO lets Windows music software running under Wine or Proton use fast,
+low-latency audio on Linux.
 
-It is a fork of [WineASIO](https://github.com/wineasio/wineasio), created so the
-driver loads cleanly inside the Steam Runtime `steamrt4` container that FL Studio
-runs in under Faugus / Proton-CachyOS. That container ships `libpipewire-0.3` but
-not `libjack.so.0`, which makes upstream WineASIO crash on `dlopen`.
+ASIO is the standard low-latency audio driver on Windows. Music programs (DAWs)
+such as FL Studio, Ableton Live, and Reaper rely on it for responsive playback
+and recording. PipeASIO provides that driver inside Wine and connects it
+straight to PipeWire, the audio system modern Linux distributions use. Your DAW
+sees a normal ASIO device; PipeWire sees a normal audio app it can route
+anywhere.
 
-PipeASIO has its own COM identity: CLSID `{2D3CA9E2-1193-4C5D-B5FD-38798F3DC074}`,
-ASIO registration under `HKCU\Software\ASIO\PipeASIO`, and DLL filename
-`pipeasio64.dll`. Installing it alongside WineASIO is safe; neither overrides the
-other, and hosts such as FL Studio see them as separate ASIO drivers.
-
-ASIO is the most common low-latency audio driver on Windows, used by workstations
-such as FL Studio, Ableton Live, and Reaper.
+It works in plain Wine and inside Proton and Steam (Faugus, Proton-CachyOS),
+and it installs safely next to WineASIO: your DAW lists them as two separate
+drivers.
 
 ![PipeASIO settings panel](docs/panel-settings.png)
 
 > [!NOTE]
-> PipeASIO is at **1.0.0**. It is verified with FL Studio under Proton-CachyOS and with the [VB-Audio ASIO Test](https://forum.vb-audio.com/viewtopic.php?p=4259#p4259) utility (64-bit); other ASIO hosts such as Reaper and Ableton Live should work but are not yet confirmed. x86_64 only — bug reports are very welcome on the [issue tracker](https://github.com/M0n7y5/pipeasio/issues).
+> PipeASIO is at **1.0.0**. It is verified with FL Studio under Proton-CachyOS and with the [VB-Audio ASIO Test](https://forum.vb-audio.com/viewtopic.php?p=4259#p4259) utility (64-bit); other ASIO hosts such as Reaper and Ableton Live should work but are not yet confirmed. x86_64 only. Bug reports are very welcome on the [issue tracker](https://github.com/M0n7y5/pipeasio/issues).
 
 ## Quick start
 
@@ -97,7 +95,7 @@ paru -S pipeasio
 
 The package installs the driver system-wide under `/usr`, plus the
 `pipeasio-settings` panel with a desktop entry and icon. Note that a
-system-wide install is invisible to Proton's container — see the Proton /
+system-wide install is invisible to Proton's container; see the Proton /
 Steam / Faugus section below.
 
 ### From source
@@ -305,6 +303,19 @@ Recommended VS Code extensions are listed in `.vscode/extensions.json`. The buil
 emits `build/compile_commands.json` for clangd; the in-tree `.clang-format` and
 `.editorconfig` keep diffs clean.
 
+### Technical background
+
+PipeASIO is a fork of [WineASIO](https://github.com/wineasio/wineasio) that
+talks to PipeWire directly through `libpipewire-0.3`, with no `libjack.so.0`
+runtime dependency. The fork exists because the Steam Runtime `steamrt4`
+container that Proton uses ships `libpipewire-0.3` but not `libjack.so.0`,
+which makes upstream WineASIO crash on `dlopen`.
+
+The driver has its own COM identity: CLSID
+`{2D3CA9E2-1193-4C5D-B5FD-38798F3DC074}`, ASIO registration under
+`HKCU\Software\ASIO\PipeASIO`, and DLL filename `pipeasio64.dll`. That is why
+it coexists with WineASIO: neither overrides the other.
+
 ### Testing
 
 `ctest --test-dir build` runs the Linux-native unit and contract tests. Two
@@ -322,7 +333,7 @@ loopback. Because PipeASIO is float32 end-to-end, the round trip must be
 **bit-exact**; the tool fails on any corrupted sample, dropped or duplicated
 buffer, swapped channel, or a measured round-trip latency that disagrees with
 `GetLatencies()` by more than one buffer. `SWEEP=1` repeats this across buffer
-sizes 128–1024 and forced sample rates 44.1/48/96 kHz, re-negotiating buffers
+sizes 128-1024 and forced sample rates 44.1/48/96 kHz, re-negotiating buffers
 in-process the same way a DAW does when you change the buffer size.
 
 If you package PipeASIO, consider installing the `pipeasio-register` helper script
